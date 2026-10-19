@@ -80,7 +80,9 @@ def shell(titolo: str, *, anno: int | None = None):
 
     with ui.header().classes('bg-slate-800 text-white items-center gap-3 px-4 py-2'):
         ui.button(icon='menu', on_click=lambda: drawer.toggle()).props('flat round color=white')
+        from leviathadm import __version__
         ui.label('LeviathADM').classes('text-lg font-bold')
+        ui.label(f'v{__version__}').classes('text-xs text-slate-400').tooltip('versione Python (ferma salvo richiesta: le novità sono nella versione web)')
         ui.select(idx.anni() or [anno], value=anno, label='Piano',
                   on_change=lambda e: vai(f'/?anno={e.value}')).props('dense dark').classes('w-28')
         ui.label(titolo).classes('text-sm text-slate-200 truncate')

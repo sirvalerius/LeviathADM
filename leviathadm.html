@@ -73,7 +73,8 @@ a.bottone { display: inline-block; border: 1px solid var(--primary); border-radi
 window.LV = window.LV || {};
 (function (LV) {
   'use strict';
-  LV.esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  LV.VERSIONE = '1.0.0';   // versioning dal 2026-10-19: un documento per versione in docs/versioni/ (test_versioni.py)
+  LV.esc =(s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ascolto = {};
   LV.on = (nome, fn) => { (ascolto[nome] ||= []).push(fn); };
   LV.emit = (nome, dati) => { for (const fn of ascolto[nome] || []) fn(dati); };
@@ -2292,7 +2293,7 @@ data_disponibilita_collaudo:
   };
   function shell() {
     document.getElementById('app').innerHTML = `
-      <header class="lv-header"><button id="menu" aria-label="menu">☰</button><b>LeviathADM</b>
+      <header class="lv-header"><button id="menu" aria-label="menu">☰</button><b>LeviathADM</b> <span class="muted" title="versione web">v${esc(LV.VERSIONE)}</span>
         <select id="piano-sel" title="Piano operativo" hidden></select><span id="titolo" class="muted"></span><span style="flex:1"></span>
         <span id="radice" class="muted"></span>
         <button id="ricarica" title="Ricarica indice">⟳</button><button id="tema" title="Tema chiaro/scuro">◐</button></header>
@@ -2308,7 +2309,7 @@ data_disponibilita_collaudo:
     const ok = !!window.showDirectoryPicker;
     const avvisoBrowser = 'Questo browser non permette di aprire cartelle: usa Edge o Chrome (File System Access). '
       + 'Se usi già Edge/Chrome, l\'accesso ai file potrebbe essere bloccato da una policy aziendale.';
-    main.innerHTML = `<div class="card" style="max-width:640px;margin:40px auto"><h2>Apri il vault</h2>
+    main.innerHTML = `<div class="card" style="max-width:640px;margin:40px auto"><h2>Apri il vault <span class="muted" style="font-size:.7em">LeviathADM Web v${esc(LV.VERSIONE)}</span></h2>
       ${errore ? `<p class="errore">${esc(errore)}</p>` : ''}
       ${ok ? '' : `<p class="errore">${avvisoBrowser}</p>`}
       <p class="muted">Scegli la cartella del vault (quella che contiene <code>PO 2026/</code>, <code>Anagrafica/</code>). Il browser chiede il permesso a ogni apertura: nulla resta memorizzato.</p>

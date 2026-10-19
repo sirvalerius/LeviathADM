@@ -1,0 +1,13 @@
+# Dipendenze runtime degli script del vault PO 2026
+#
+# Installazione:
+#   pip install -r requirements.txt
+#
+# Nota: docx2pdf richiede Microsoft Word installato (Windows/macOS).
+
+python-docx>=1.0       # fill_template.py, chiudi_approvazione.py
+docx2pdf>=0.1.8        # chiudi_approvazione.py (richiede MS Word)
+pypandoc>=1.13         # convert.py (richiede pandoc nel PATH)
+openpyxl>=3.1          # build_project_pages.py (lettura Excel PO)
+nicegui>=3.14          # leviathadm (dashboard)
+pywin32>=306; sys_platform == "win32"   # mail_utils.save_msg, audit_invii, organizza_cartelle_progetti (Outlook COM)

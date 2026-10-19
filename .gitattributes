@@ -1,0 +1,8 @@
+* text=auto
+*.cmd text eol=crlf
+leviathadm.html text eol=lf
+*.pdf binary
+*.docx binary
+*.eml binary
+*.msg binary
+*.png binary

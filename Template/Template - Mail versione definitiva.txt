@@ -1,0 +1,12 @@
+Buongiorno a tutti,
+in allegato trasmetto la versione definitiva del resoconto della riunione di {{TIPO}} tenuta in data {{DATA_RIUNIONE}}.
+
+Il resoconto si intende convalidato dai partecipanti in data {{DATA_APPROVAZIONE}}, decorso il termine per la formulazione di osservazioni fissato al {{DATA_SCADENZA}}.
+
+Saluti
+
+Astolfo Lunardi
+
+Direzione Organizzazione e Trasformazione Digitale
+Ufficio Attuazione Progetti e Sicurezza Informatica
++39 06 5024 3574

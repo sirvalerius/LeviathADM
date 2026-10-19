@@ -1,0 +1,2433 @@
+<!doctype html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeviathADM Web</title>
+<style>
+:root { --bg: #ffffff; --fg: #1e293b; --muted: #64748b; --card: #ffffff; --border: #e2e8f0; --zebra: #e2e8f0;
+        --hover: #cbd5e1; --header: #1e293b; --header-fg: #ffffff; --primary: #1e40af; --drawer: rgba(30,41,59,.16);
+        --amber-bg: #fef3c7; --amber-fg: #92400e; --green: #166534; --red: #991b1b; }
+html[data-theme="dark"] { --bg: #0f172a; --fg: #e2e8f0; --muted: #94a3b8; --card: #1e293b; --border: #334155;
+        --zebra: #273449; --hover: #334155; --header: #1e293b; --header-fg: #ffffff; --primary: #3b82f6;
+        --drawer: #1e293b; --amber-bg: #78350f; --amber-fg: #fcd34d; --green: #86efac; --red: #fca5a5; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--fg); }
+a { color: var(--primary); }
+button { font: inherit; cursor: pointer; border: 1px solid var(--primary); background: transparent; color: var(--primary);
+         border-radius: 4px; padding: 4px 10px; }
+button.primario { background: var(--primary); color: #fff; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+input, select, textarea { font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--border);
+         border-radius: 4px; padding: 4px 6px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.muted { color: var(--muted); font-size: 12px; }
+.badge { display: inline-block; border: 1px solid currentColor; border-radius: 4px; padding: 0 6px; font-size: 12px; }
+table.lv { width: 100%; border-collapse: collapse; }
+table.lv th, table.lv td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.lv thead th { background: var(--hover); font-weight: 600; }
+table.lv tbody tr:nth-child(even) { background: var(--zebra); }
+table.lv tbody tr:hover { background: var(--hover); }
+.md h1 { font-size: 1.5em; margin: .4em 0; } .md h2 { font-size: 1.2em; margin: .8em 0 .3em; border-bottom: 1px solid var(--border); }
+.md p { margin: .4em 0; } .md blockquote { border-left: 3px solid var(--border); margin: .4em 0; padding-left: 10px; color: var(--muted); }
+.md pre, .md code { background: var(--zebra); border-radius: 3px; } .md pre { padding: 8px; overflow: auto; } .md code { padding: 0 3px; }
+.md li.task { list-style: none; margin-left: -1.2em; }
+.lv-header { display: flex; align-items: center; gap: 12px; background: var(--header); color: var(--header-fg); padding: 8px 16px; position: sticky; top: 0; z-index: 10; }
+.lv-header button { color: var(--header-fg); border-color: transparent; font-size: 16px; }
+.lv-corpo { display: flex; min-height: calc(100vh - 44px); }
+.lv-drawer { width: 220px; flex: none; background: var(--drawer); border-right: 4px solid #1e293b; padding: 12px 0; }
+.lv-drawer.chiuso { display: none; } .lv-drawer a { display: block; padding: 6px 16px; color: var(--fg); text-decoration: none; }
+.lv-drawer a:hover { background: var(--hover); }
+main { flex: 1; padding: 16px 24px; max-width: 1800px; min-width: 0; }
+#toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 20; }
+.toast { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 8px 12px; border-radius: 4px; }
+.toast.avviso { border-left-color: #d97706; } .toast.errore { border-left-color: #dc2626; } .toast.ok { border-left-color: #16a34a; }
+.errore { color: var(--red); }
+.barra { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; position: relative; }
+table.grande td, table.grande th { font-size: 1.05rem; } table.grande { table-layout: fixed; }
+td.ellissi { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+th.asc::after { content: ' ▲'; } th.desc::after { content: ' ▼'; } table.grande thead th { cursor: pointer; user-select: none; }
+details .menu { position: absolute; right: 0; top: 100%; background: var(--card); border: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+details summary { cursor: pointer; } table.grande tbody tr { cursor: pointer; } table.grande tbody tr:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
+.riga { display: flex; align-items: center; gap: 10px; } h2 { margin: 8px 0; }
+.griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.stepper { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; } .step { border-radius: 16px; } .step.attivo { background: var(--primary); color: #fff; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.campo { display: flex; flex-direction: column; gap: 2px; } .campo .riga { display: flex; gap: 4px; align-items: center; }
+.campo input[type=text], .campo input:not([type]), .campo input[type=email], .campo select { min-width: 180px; flex: 1; }
+.campo-data .picker { width: 34px; padding: 2px; flex: none; } button.nuova-persona { padding: 2px 8px; flex: none; }
+.lv-dialog { border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--fg); padding: 16px; min-width: 420px; }
+.lv-dialog::backdrop { background: rgba(0, 0, 0, .4); } .lv-dialog form { display: flex; flex-direction: column; gap: 8px; }
+.griglia-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; } .campo.largo { grid-column: 1 / -1; }
+a.bottone { display: inline-block; border: 1px solid var(--primary); border-radius: 4px; padding: 4px 10px; text-decoration: none; }
+.due-colonne { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .due-colonne textarea, form.editor textarea { width: 100%; font: inherit; }
+.lv-riga { padding: 4px 6px; border-radius: 4px; } .lv-riga:nth-child(even) { background: var(--zebra); } .sezione b { display: block; margin-bottom: 6px; }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* === 00_base.js === */
+/* LeviathADM Web — base: namespace, escape HTML, eventi. Script classico: nessun import/export. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  LV.esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ascolto = {};
+  LV.on = (nome, fn) => { (ascolto[nome] ||= []).push(fn); };
+  LV.emit = (nome, dati) => { for (const fn of ascolto[nome] || []) fn(dati); };
+})(window.LV);
+
+/* === 10_markdown.js === */
+/* Parser puri del markdown del vault: traduzione 1:1 di scripts/mail_utils.parse_frontmatter e
+   leviathadm/vault/parsers.py (stessi regex, stessi casi limite). Verificati dai golden. */
+(function (LV) {
+  'use strict';
+  const FM_SEARCH = /^---[ \t]*\n([\s\S]*?)\n---/;                 // parse_frontmatter: re.search con ^ = inizio testo
+  const FM_STRIP = /^---[ \t]*\n[\s\S]*?\n---[ \t]*\n?/;             // _FM_RE
+  const H2_SPLIT = /^## +(.+?) *\n/m;                                 // _H2_RE
+  const H1 = /^# +(.+?) *$/m;                                         // _H1_RE
+  const CHECK = /^- \[( |x|X)\] (.+?)\s*$/gm;                         // _CHECK_RE
+  const BULLET = /^[-*]\s+(.+?)\s*$/gm;                               // _BULLET_RE
+  const WIKI = /(!?)\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g; // _WIKI_RE
+  const TAG = /(?<![\p{L}\p{N}_/#])#([A-Za-z][\p{L}\p{N}_\-]*)/gu;      // _TAG_RE: \w di Python è Unicode, quello di JS no
+  const TITOLO_MD = /^\s*#{1,6}\s/;
+  const SEP_CELLA = /^[-: ]*$/;
+
+  function parseFrontmatter(text) {
+    const m = FM_SEARCH.exec(text || '');
+    if (!m) return {};
+    const fm = {};
+    for (const line of m[1].split(/\r?\n/)) {
+      if (line.includes(':')) {
+        const i = line.indexOf(':');
+        fm[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+      }
+    }
+    return fm;
+  }
+  function splitBody(text) {
+    text = text || '';
+    return text.startsWith('---') ? text.replace(FM_STRIP, '') : text;
+  }
+  function splitSections(body) {
+    const parts = (body || '').split(H2_SPLIT);   // come re.split con gruppo: [pre, h1, b1, h2, b2, …]
+    const out = {};
+    for (let i = 1; i < parts.length - 1; i += 2) out[parts[i].trim()] = parts[i + 1];
+    return out;
+  }
+  function parseTable(section) {
+    const rows = [];
+    let headerSaltato = false;
+    for (const line of (section || '').split('\n')) {
+      const s = line.trim();
+      if (!s.startsWith('|')) { if (rows.length) break; continue; }
+      const cells = s.replace(/^\|+|\|+$/g, '').split('|').map((c) => c.trim());
+      if (cells.every((c) => SEP_CELLA.test(c))) continue;
+      if (!headerSaltato) { headerSaltato = true; continue; }
+      rows.push(cells);
+    }
+    return rows;
+  }
+  const tutti = (re, s) => Array.from((s || '').matchAll(re));
+  const parseCheckboxes = (s) => tutti(CHECK, s).map((m) => [m[1] !== ' ', m[2]]);
+  const parseBullets = (s) => tutti(BULLET, s).map((m) => m[1]);
+  const parseWikilinks = (s) => tutti(WIKI, s).map((m) => ({ target: m[2].trim(), alias: m[3] ? m[3].trim() : null, embed: m[1] === '!' }));
+  function parseTags(text) {
+    const tags = [];
+    for (const line of (text || '').split('\n')) {
+      if (TITOLO_MD.test(line)) continue;
+      for (const m of line.matchAll(TAG)) if (!tags.includes(m[1])) tags.push(m[1]);
+    }
+    return tags;
+  }
+  function stripMarkdownInline(text) {
+    return (text || '').replace(WIKI, (_, b, t, a) => (a || t).trim()).replace(/\*\*(.+?)\*\*/g, '$1').replace(/`/g, '');
+  }
+  const pad2 = (n) => String(n).padStart(2, '0');
+  function parseData(raw) {
+    const s = (raw || '').trim();
+    if (!s) return null;
+    let a, me, g;
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);          // strptime %m/%d accettano anche una cifra
+    if (m) [a, me, g] = [m[1], m[2], m[3]];
+    else if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s))) [a, me, g] = [m[3], m[2], m[1]];
+    else return null;
+    const d = new Date(Date.UTC(+a, +me - 1, +g));
+    if (d.getUTCFullYear() !== +a || d.getUTCMonth() !== +me - 1 || d.getUTCDate() !== +g) return null;  // 30/02
+    return `${a}-${pad2(me)}-${pad2(g)}`;
+  }
+  const normalizza = (text) => (text || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();   // parsers.normalizza: minuscolo senza accenti
+  function titoloH1(text) {
+    const m = H1.exec(text || '');
+    return m ? m[1].trim() : null;
+  }
+  const FM_UPDATE = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*\n?([\s\S]*)/;   // update_frontmatter_keys: re.match con DOTALL
+  function updateFrontmatterKeys(text, updates) {
+    // mail_utils.update_frontmatter_keys: chiavi esistenti aggiornate al loro posto, nuove in coda, corpo intatto;
+    // senza frontmatter il testo torna invariato (Python non scrive nulla)
+    const m = FM_UPDATE.exec(text || '');
+    if (!m) return text || '';
+    const [, raw, body] = m;
+    const out = [], visti = new Set();
+    const righe = raw === '' ? [] : raw.split('\n');                 // splitlines(): una stringa vuota dà [] e l'ultima riga vuota (raw che finisce con \n) non conta
+    if (righe.length && righe.at(-1) === '' && raw.endsWith('\n')) righe.pop();
+    for (const line of righe) {
+      if (line.includes(':')) {
+        const k = line.slice(0, line.indexOf(':')).trim();
+        if (Object.hasOwn(updates, k)) { out.push(`${k}: ${updates[k]}`); visti.add(k); continue; }
+      }
+      out.push(line);
+    }
+    for (const [k, v] of Object.entries(updates)) if (!visti.has(k)) out.push(`${k}: ${v}`);
+    return `---\n${out.join('\n')}\n---\n${body}`;
+  }
+  LV.md = { parseFrontmatter, splitBody, splitSections, parseTable, parseCheckboxes, parseBullets, parseWikilinks,
+            parseTags, stripMarkdownInline, parseData, titoloH1, updateFrontmatterKeys, normalizza };
+})(window.LV);
+
+/* === 20_modelli.js === */
+/* Modelli del vault: traduzione di leviathadm/vault/loader.py e paths.py. I percorsi sono stringhe POSIX
+   relative alla root ("PO 2026/ADM.../ADM....md"); le date sono ISO o null. */
+(function (LV) {
+  'use strict';
+  const M = LV.md;
+  const RESOCONTO_RE = /^(ADM[0-9A-Z-]+) - (\d{8}) Resoconto (.+?)(?: - rev\s*\d+|-rev.*)?$/;
+  const SCADENZA_RE = /scadenza:\s*(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})/i;
+  const LINK_RE = /\[\[([^\]|]+)/;
+  const COMMENTO_RE = /<!--[\s\S]*?-->/g;
+  const parti = (rel) => rel.split('/');
+  const nome = (rel) => parti(rel).at(-1);
+  const stemDi = (rel) => nome(rel).replace(/\.md$/, '');
+  const cartella = (rel) => parti(rel).slice(0, -1).join('/');
+
+  const notaId = (rel) => rel.replace(/\.md$/, '').replaceAll('/', '~');
+  function isSchedaRilascio(rel) {
+    const p = parti(rel);
+    if (p.length < 2 || !rel.endsWith('.md')) return false;
+    const dir = p.at(-2);
+    return stemDi(rel) === dir && dir.startsWith('ADM') && !dir.includes('(');
+  }
+  function tipoNota(rel, fm) {
+    if (isSchedaRilascio(rel)) return 'rilascio';
+    const t = (fm.tipo || '').trim().toLowerCase();
+    if (['progetto', 'sottoprogetto', 'ufficio'].includes(t)) return t;
+    const p = parti(rel);
+    if (p[0] === 'Anagrafica') return p.length > 2 && p[1] === 'Strutture' ? 'ufficio' : 'persona';
+    if (p.length === 2 && p[0].startsWith('PO ')) return 'pagina';
+    return 'nota';
+  }
+  function parseNota(rel, text, lastModified) {
+    const fm = M.parseFrontmatter(text);
+    const corpo = M.splitBody(text);
+    return { rel, id: notaId(rel), titolo: M.titoloH1(corpo) || stemDi(rel), frontmatter: fm, corpo,
+             wikilink: M.parseWikilinks(corpo), tag: M.parseTags(corpo), tipo: tipoNota(rel, fm), lastModified };
+  }
+  const pulisci = (s) => (s || '').replace(COMMENTO_RE, '').trim();
+  function riunioni(sez) {
+    const out = [];
+    for (const row of M.parseTable(sez)) {
+      let data, fase, trascritto, resoconto, inviato;
+      if (row.length === 5) [data, fase, trascritto, resoconto, inviato] = row;
+      else if (row.length === 4) { [data, fase, resoconto, inviato] = row; trascritto = ''; }
+      else continue;
+      if (['', '—', '-'].includes(data)) continue;
+      const m = LINK_RE.exec(resoconto);
+      out.push({ data, fase, trascritto, resoconto_link: m ? m[1].trim() : '', inviato: inviato.includes('✅'), raw_row: row });
+    }
+    return out;
+  }
+  const azioni = (sez) => M.parseCheckboxes(sez).map(([chiusa, testo]) => {
+    const m = SCADENZA_RE.exec(testo);
+    return { chiusa, testo, testo_pulito: M.stripMarkdownInline(testo), scadenza: m ? M.parseData(m[1]) : null };
+  });
+  const decisioni = (sez) => M.parseBullets(sez).map((testo) => {
+    const i = testo.indexOf(' — ');
+    const prefisso = i >= 0 ? testo.slice(0, i) : testo;
+    const resto = i >= 0 ? testo.slice(i + 3) : '';
+    const d = i >= 0 ? M.parseData(prefisso) : null;
+    return { data: d, testo: M.stripMarkdownInline(d ? resto : testo) };
+  });
+  const protocolli = (sez) => M.parseTable(sez).filter((r) => r.length >= 6)
+    .map((r) => ({ tipo: r[0], documento: r[1], numero_adm: r[2], data_adm: r[3], rif_sogei: r[4], registro: r[5] }));
+
+  function parseResoconto(rel, text, pres) {
+    const fm = M.parseFrontmatter(text);
+    const stem = stemDi(rel);
+    const m = RESOCONTO_RE.exec(stem);
+    const tipo = (fm.tipo_riunione || '').trim() || (m ? m[3] : '');
+    let data = M.parseData(fm.data_riunione || '');
+    if (data === null && m) { const g = m[2]; data = M.parseData(`${g.slice(0, 4)}-${g.slice(4, 6)}-${g.slice(6)}`); }
+    const inInviati = parti(rel).includes('inviati');
+    let stato = 'bozza';
+    if ((fm.definitivo_inviato || '').toLowerCase() === 'true') stato = 'definitivo';
+    else if ((fm.inviato || '').toLowerCase() === 'true' || inInviati) stato = 'inviato';
+    return { rel, stem, tipo_riunione: tipo, data_riunione: data, stato, in_inviati: inInviati,
+             ha_docx: !!pres.haDocx, ha_msg: !!pres.haMsg, ha_pdf: !!pres.haPdf, frontmatter: fm };
+  }
+  const ordinaResoconti = (lista) => [...lista].sort((a, b) => {
+    const da = a.data_riunione || '', db = b.data_riunione || '';     // null = date.min
+    return da < db ? -1 : da > db ? 1 : a.stem < b.stem ? -1 : a.stem > b.stem ? 1 : 0;
+  });
+  function parseRilascio(rel, text, lastModified, resoconti, verbali) {
+    const fm = M.parseFrontmatter(text);
+    const corpo = M.splitBody(text);
+    const sez = M.splitSections(corpo);
+    const problemi = [];
+    if (!fm.codice_rilascio) problemi.push('frontmatter senza codice_rilascio');
+    for (const n of ['Riunioni', 'Azioni aperte', 'Decisioni chiave', 'Prossima riunione']) if (!(n in sez)) problemi.push(`sezione mancante: ${n}`);
+    const stato = fm.stato || '';
+    return { codice: fm.codice_rilascio || stemDi(rel), rel, id: notaId(rel), lastModified, frontmatter: fm, stato,
+             descrizione_rilascio: fm.descrizione_rilascio || '', riunioni: riunioni(sez.Riunioni || ''),
+             azioni: azioni(sez['Azioni aperte'] || ''), decisioni: decisioni(sez['Decisioni chiave'] || ''),
+             protocolli: protocolli(sez['Allegati protocolli'] || ''),
+             prossima_riunione: M.stripMarkdownInline(pulisci(sez['Prossima riunione'] || '')),
+             team_raw: (sez.Team || '').trim(), resoconti: ordinaResoconti(resoconti || []), verbali: [...(verbali || [])].sort(),
+             sezioni: sez, problemi, attivo: stato.trim().toLowerCase() !== 'rinominato' };
+  }
+  LV.modelli = { RESOCONTO_RE, notaId, isSchedaRilascio, tipoNota, parseNota, parseResoconto, ordinaResoconti, parseRilascio, cartella, nome, stemDi };
+})(window.LV);
+
+/* === 25_scrittura.js === */
+/* Writer puri (testi da scrivere) e regole dei moduli: traduzione di writers.crea_persona,
+   build_project_pages.write_release_page (scheda nuova) e delle regole di rilascio_modifica.py. */
+(function (LV) {
+  'use strict';
+  const M = LV.md;
+  const STATI = ['Da Avviare', 'Bozza', 'Startup', 'In corso', 'Analisi', 'In Verifica', 'Collaudo', 'Concluso'];
+  const CAMPI_TEAM = [['pm', 'PM'], ['ra', 'RA'], ['rp', 'RP'], ['struttura_business', 'Struttura business'],
+                      ['referente_business', 'Referente business'], ['referente_sogei', 'Referente SOGEI']];
+  const CAMPI_DATE = [['data_fine_analisi', 'Fine analisi'], ['data_disponibilita_collaudo', 'Disponibilità collaudo'],
+                      ['data_collaudo_prevista', 'Collaudo previsto'], ['data_collaudo_effettiva', 'Collaudo effettivo'],
+                      ['data_rilascio_prevista', 'Rilascio previsto'], ['data_rilascio_effettiva', 'Rilascio effettivo']];
+  const CODICE_RE = /^ADM\d{3}-\d{2}-[0-9A-Z]{2}$/;
+  const VIETATI = /[\\/:*?"<>|]/;
+
+  function validaDateIso(valori) {
+    for (const [campo, label] of CAMPI_DATE) {
+      const v = (valori[campo] || '').trim();
+      if (!v || v === 'DA COMPLETARE') continue;
+      const iso = M.parseData(v);
+      if (iso === null) return `Data "${label}" non valida: usa AAAA-MM-GG.`;
+      valori[campo] = iso;
+    }
+    return null;
+  }
+  const diffCampi = (valori, iniziali) => Object.fromEntries(Object.entries(valori).filter(([k, v]) => !Object.hasOwn(iniziali, k) || v !== iniziali[k]));
+
+  function creaPersonaTesto(nome, { organizzazione = 'ADM', direzione = '', ufficio = '', email = '', ruolo_tipico = '' } = {}) {
+    nome = (nome || '').split(/\s+/).filter(Boolean).join(' ');
+    if (!nome) throw new Error('nome vuoto');
+    if (VIETATI.test(nome)) throw new Error('il nome non può contenere \\ / : * ? " < > |');
+    const link = [direzione, ufficio].filter(Boolean);
+    const text = `---\norganizzazione: ${organizzazione}\ndirezione: ${direzione}\nufficio: ${ufficio}\nemail: ${email}\nruolo_tipico: ${ruolo_tipico}\n---\n\n# ${nome}\n\n`
+      + (link.length ? link : [organizzazione]).map((s) => `[[${s}]]\n`).join('');
+    return { rel: `Anagrafica/${nome}.md`, text };
+  }
+
+  function creaRilascioTesto(rel, anno) {
+    const cod = rel.cod_rilascio, g = (k, d = '') => rel[k] ?? d;
+    const text = `---
+codice_rilascio: ${cod}
+codice_sottoprogetto: ${rel.cod_sub}
+codice_progetto: ${rel.cod_sub.split('-')[0]}
+descrizione_progetto: ${rel.desc_progetto}
+descrizione_sottoprogetto: ${rel.desc_sub}
+descrizione_rilascio: ${rel.desc_rilascio}
+stato: Bozza
+pm: ${g('pm')}
+ra: ${g('ra')}
+rp: ${g('rp')}
+referente_business: ${g('referente_business')}
+struttura_business: ${g('struttura_business')}
+referente_sogei: ${g('referente_sogei')}
+vincoli_normativi: ${g('vincoli_normativi', 'NO')}
+data_collaudo_prevista: ${g('data_collaudo_prevista')}
+data_collaudo_effettiva: ${g('data_collaudo_effettiva')}
+data_rilascio_prevista: ${g('data_rilascio_prevista')}
+data_rilascio_effettiva: ${g('data_rilascio_effettiva')}
+nota_variazione_date:
+protocollo_analisi:
+protocollo_approvazione_analisi:
+protocollo_collaudo:
+protocollo_estensione_esercizio:
+protocollo_disponibilita_collaudo:
+data_disponibilita_collaudo:
+---
+
+# ${cod} — ${rel.desc_rilascio}
+
+> Collaudo previsto: **${rel.data_collaudo_prevista}** · Stato: **Bozza**
+
+[[${rel.cod_sub}]]
+
+## Riunioni
+
+| Data | Fase | Resoconto | Inviato |
+|------|------|-----------|---------|
+| — | — | — | — |
+
+## Azioni aperte
+
+<!-- Aggiornare dopo ogni riunione -->
+
+## Decisioni chiave
+
+<!-- Data — descrizione decisione -->
+
+## Prossima riunione
+
+<!-- Data · Tipo -->
+
+## Allegati protocolli
+
+> Compila le celle. \`Prot. ADM n.\` / \`Data prot. ADM\` = numero e data di protocollazione ADM; \`Rif. SOGEI\` = riferimento del documento SOGEI (≠ protocollo ADM).
+
+| Tipo | Documento | Prot. ADM n. | Data prot. ADM | Rif. SOGEI | Registro |
+|------|-----------|:------------:|:--------------:|------------|----------|
+| Analisi | | | | | Registro Contratto (ingresso) |
+| Approvazione analisi | | | | | Registro Ufficiale (uscita) |
+| Disponibilità a collaudo | | | | | Registro Contratto (ingresso) |
+| Collaudo | | | | | |
+| Estensione esercizio | | | | | |
+`;
+    return { rel: `PO ${anno}/${cod}/${cod}.md`, text };
+  }
+  LV.scrittura = { STATI, CAMPI_TEAM, CAMPI_DATE, CODICE_RE, VIETATI, validaDateIso, diffCampi, creaPersonaTesto, creaRilascioTesto };
+})(window.LV);
+
+/* === 27_resoconti.js === */
+/* Resoconti come documenti a sezioni: traduzione di leviathadm/vault/resoconti.py (parse/ser per sezione,
+   round-trip esatto, body_di, testo) e di resoconto_modifica.bodies_modificati / campi_frontmatter_resoconto. */
+(function (LV) {
+  'use strict';
+  const M = LV.md;
+  const SEZIONI_KV = ['RIUNIONE', 'RESOCONTO', 'OBIETTIVO'];
+  const SEZIONI_TESTO = ['OBIETTIVO DELLA RIUNIONE', 'ARGOMENTI TRATTATI'];
+  const SEZIONI_NOTE = [...SEZIONI_KV, 'LISTA PARTECIPANTI', ...SEZIONI_TESTO, 'AZIONI CONCORDATE', 'ESITO'];
+  const NOTA_INCOMPLETA = '[lista incompleta — integrare con report presenze Teams]';
+  const INTRO_ESITO = 'La verifica si è svolta in contraddittorio tra i rappresentanti di ADM e quelli di Sogei indicati nella lista partecipanti.\n\nIl collaudo ha avuto lo scopo di verificare:\n\n'
+    + '- la rispondenza della documentazione fornita da Sogei rispetto a quanto previsto in fase di analisi;\n'
+    + '- la rispondenza di quanto realizzato rispetto alle funzionalità descritte nel documento di analisi;\n'
+    + '- la rispondenza degli output del piano di test precedentemente concordato con Sogei rispetto ai valori attesi.\n\n'
+    + 'Sono stati eseguiti i seguenti casi di test, con il relativo esito:';
+  const CHIUSURE = { firma: 'I partecipanti forniscono la propria approvazione firmando il resoconto.',
+    telematica: 'I partecipanti forniscono la propria approvazione telematicamente.',
+    telematica_in_riunione: 'Il collaudo si intende approvato dai partecipanti presenti, che hanno fornito la propria approvazione telematicamente in sede di riunione.' };
+  const ESITI = ['POSITIVO', 'con riserva', 'NEGATIVO'];
+  const CASI_INTRO = 'Sono stati eseguiti i seguenti casi di test, con il relativo esito:';
+  const H2_RIGA = /^## [^\n]*(?:\n|$)/gm;
+  const CODA = /(\n+---[ \t]*)?(\n*)$/;
+  const CODA_PIENA = /^(\n+---[ \t]*)?(\n*)$/;
+  const FOOTER = /\n---[ \t]*\n(?:\s*\*[^\n]*\n?)+\s*$/;
+  const KV_ROW = /^\| \*\*(.+?)\*\* \|(?: (.*?))? \|$/;
+  const NOTA = /^\[lista incompleta[^\]]*\]$/m;
+  const RIGA_ESITO = /^Il collaudo ha avuto esito \*\*(.*?)\*\*\.$/m;
+  const ORDINE_SIGLE = { '(PM)': 0, '(RA)': 1, '(RP)': 2, '(RB)': 3 };
+  const SPAZI = /[ \t]+/g;
+  const stripNl = (s) => s.replace(/^\n+|\n+$/g, '');
+
+  // ---- sezioni senza perdita (parsers.py) ----
+  function spezzaSezioni(corpo) {
+    const ms = Array.from(corpo.matchAll(H2_RIGA));
+    if (!ms.length) return { pre: corpo, blocchi: [] };
+    const blocchi = ms.map((m, i) => ({ riga: m[0], heading: m[0].slice(3).trim(), body: corpo.slice(m.index + m[0].length, i + 1 < ms.length ? ms[i + 1].index : corpo.length) }));
+    return { pre: corpo.slice(0, ms[0].index), blocchi };
+  }
+  const ricomponi = (pre, blocchi) => pre + blocchi.map((b) => b.riga + b.body).join('');
+  function scomponiBody(body) {
+    const stripped = body.replace(/^\n+/, '');
+    const testa = body.slice(0, body.length - stripped.length);
+    if (stripped.startsWith('---') && CODA_PIENA.test('\n' + stripped)) {
+      const k = Math.min(2, testa.length);   // sezione vuota: il separatore si porta dietro (fino a) due newline
+      return { testa: testa.slice(0, testa.length - k), inner: '', coda: testa.slice(testa.length - k) + stripped };
+    }
+    const m = CODA.exec(stripped);
+    const coda = m ? stripped.slice(m.index) : '';
+    return { testa, inner: stripped.slice(0, stripped.length - coda.length), coda };
+  }
+  // ---- tabelle chiave/valore ----
+  const rigaTabella = (cells) => '|' + cells.map((c) => (c ? ` ${c} ` : ' ')).join('|') + '|';
+  function parseKv(inner) {
+    const righe = inner.split('\n');
+    if (righe[0] !== '| | |' || righe[1] !== '|---|---|') return null;
+    const out = {};
+    for (const r of righe.slice(2)) { const m = KV_ROW.exec(r); if (!m) return null; out[m[1]] = m[2] || ''; }
+    return out;
+  }
+  const serKv = (d) => ['| | |', '|---|---|', ...Object.entries(d).map(([k, v]) => rigaTabella([`**${k}**`, v]))].join('\n');
+  const trova = (d, chiave) => { for (const [k, v] of Object.entries(d)) if (k.toUpperCase() === chiave.toUpperCase()) return v; return ''; };
+  // ---- partecipanti ----
+  const celle = (riga) => ((riga.startsWith('|') && riga.endsWith('|')) ? riga.slice(1, -1).split('|').map((c) => c.trim()) : null);
+  const soloSep = (c) => /^[-: ]*$/.test(c.join(''));
+  function parsePartecipanti(inner) {
+    let nota = '';
+    const m = NOTA.exec(inner);
+    if (m) { nota = m[0]; inner = inner.slice(0, m.index).replace(/\n+$/, ''); }
+    if (!inner.includes('**SOGEI**') || !inner.startsWith('**ADM**')) return null;
+    const i = inner.indexOf('**SOGEI**');
+    const bloccoAdm = inner.slice(0, i), bloccoSogei = inner.slice(i + 9);
+    const adm = [];
+    for (const r of bloccoAdm.split('\n')) {
+      const c = celle(r.trim());
+      if (c === null || c[0].toLowerCase() === 'ruolo' || soloSep(c)) continue;
+      if (c.length === 3) adm.push({ ruolo: c[0], ufficio: c[1], nome: c[2] });
+      else if (c.length === 2) adm.push({ ruolo: c[0], ufficio: '', nome: c[1] });
+      else return null;
+    }
+    const sogei = [];
+    for (const r of bloccoSogei.split('\n')) {
+      const c = celle(r.trim());
+      if (c === null || c[0].toLowerCase() === 'nome' || soloSep(c)) continue;
+      if (c.length !== 1) return null;
+      sogei.push(c[0]);
+    }
+    return { adm, sogei, nota };
+  }
+  function serPartecipanti(adm, sogei, nota = '') {
+    const righe = ['**ADM**', '', '| Ruolo | Ufficio | Nome |', '|-------|---------|------|', ...adm.map((p) => rigaTabella([p.ruolo, p.ufficio, p.nome])),
+      '', '**SOGEI**', '', '| Nome |', '|------|', ...sogei.map((n) => rigaTabella([n]))];
+    return righe.join('\n') + (nota ? '\n\n' + nota : '');
+  }
+  const ordinaAdm = (adm) => [...adm].sort((a, b) => (ORDINE_SIGLE[a.ruolo.split(' ')[0]] ?? 9) - (ORDINE_SIGLE[b.ruolo.split(' ')[0]] ?? 9));
+  // ---- azioni ----
+  function parseAzioni(inner) {
+    if (!inner.trim()) return [];
+    const out = [];
+    for (const r of inner.split('\n')) {
+      if (r.startsWith('- ')) out.push(r.slice(2));
+      else if (r.startsWith('  ') && out.length) out[out.length - 1] += '\n' + r;
+      else return null;
+    }
+    return out;
+  }
+  const serAzioni = (azioni) => azioni.map((a) => '- ' + a).join('\n');
+  // ---- ESITO ----
+  function parseEsito(inner) {
+    const i = inner.indexOf(CASI_INTRO);
+    const m = RIGA_ESITO.exec(inner);
+    if (i < 0 || !m || m.index < i) return null;
+    const intro = inner.slice(0, i + CASI_INTRO.length);
+    const mezzo = stripNl(inner.slice(i + CASI_INTRO.length, m.index));
+    const righe = mezzo ? mezzo.split('\n') : [];
+    const casi = [];
+    let k = 0;
+    while (k < righe.length && righe[k].startsWith('- ')) {
+      const t = righe[k].slice(2), j = t.lastIndexOf(':');
+      casi.push(j >= 0 ? { nome: t.slice(0, j).trim(), esito: t.slice(j + 1).trim() } : { nome: t.trim(), esito: '' });
+      k += 1;
+    }
+    return { intro, casi, osservazioni: stripNl(righe.slice(k).join('\n')), esito: m[1], chiusura: stripNl(inner.slice(m.index + m[0].length)) };
+  }
+  function serEsito(e) {
+    const blocchi = [e.intro];
+    if (e.casi.length) blocchi.push(e.casi.map((c) => `- ${c.nome}: ${c.esito}`.replace(/\s+$/, '')).join('\n'));
+    if (e.osservazioni) blocchi.push(e.osservazioni);
+    blocchi.push(`Il collaudo ha avuto esito **${e.esito}**.`);
+    if (e.chiusura) blocchi.push(e.chiusura);
+    return blocchi.join('\n\n');
+  }
+  const stessaForma = (a, b) => a === b || a.replace(SPAZI, ' ') === b.replace(SPAZI, ' ');
+  // ---- documento ----
+  function parseSezione(doc, s) {
+    const h = s.heading, inner = s.inner;
+    if (SEZIONI_KV.includes(h)) {
+      const d = parseKv(inner);
+      if (d === null || !stessaForma(serKv(d), inner)) { s.grezza = true; return; }
+      doc[{ RIUNIONE: 'riunione', RESOCONTO: 'resoconto', OBIETTIVO: 'obiettivo' }[h]] = d;
+    } else if (h === 'LISTA PARTECIPANTI') {
+      const r = parsePartecipanti(inner);
+      if (r === null || !stessaForma(serPartecipanti(r.adm, r.sogei, r.nota), inner)) { s.grezza = true; return; }
+      Object.assign(doc, { adm: r.adm, sogei: r.sogei, nota_partecipanti: r.nota });
+    } else if (h === 'OBIETTIVO DELLA RIUNIONE') doc.obiettivo_riunione = inner;
+    else if (h === 'ARGOMENTI TRATTATI') doc.argomenti = inner;
+    else if (h === 'AZIONI CONCORDATE') {
+      const a = parseAzioni(inner);
+      if (a === null || !stessaForma(serAzioni(a), inner)) { s.grezza = true; return; }
+      doc.azioni = a;
+    } else if (h === 'ESITO') {
+      const e = parseEsito(inner);
+      if (e === null || !stessaForma(serEsito(e), inner)) { s.grezza = true; return; }
+      doc.esito = e;
+    }
+  }
+  function parseResocontoDoc(rel, text, lastModified) {
+    const corpo = M.splitBody(text);
+    const fm_raw = text.slice(0, text.length - corpo.length);
+    const { pre, blocchi } = spezzaSezioni(corpo);
+    let footer = '';
+    if (blocchi.length) {
+      const ultimo = blocchi[blocchi.length - 1];
+      const m = FOOTER.exec(ultimo.body);
+      if (m) { footer = m[0]; ultimo.body = ultimo.body.slice(0, m.index); }
+    }
+    const sezioni = blocchi.map((b) => ({ heading: b.heading, riga: b.riga, ...scomponiBody(b.body), grezza: false }));
+    const doc = { rel, lastModified, frontmatter: M.parseFrontmatter(text), fm_raw, pre, sezioni, footer, riunione: {}, resoconto: {}, obiettivo: {},
+      adm: [], sogei: [], nota_partecipanti: '', obiettivo_riunione: '', argomenti: '', azioni: [], esito: null, problemi: [] };
+    for (const s of sezioni) { parseSezione(doc, s); if (s.grezza) doc.problemi.push(`sezione ${s.heading} in formato non standard: modificabile solo come testo`); }
+    if (!sezioni.length) doc.problemi.push('nessuna sezione ## trovata (export docx2md?): solo lettura come nota');
+    const t = /^# +(.+?)\s*$/m.exec(pre);
+    doc.titolo = t ? t[1] : LV.modelli.stemDi(rel);
+    doc.ha_sezioni = sezioni.length > 0;
+    const hs = new Set(sezioni.map((s) => s.heading));
+    doc.is_collaudo = hs.has('ESITO') && !hs.has('AZIONI CONCORDATE');
+    return doc;
+  }
+  const sezione = (doc, heading) => doc.sezioni.find((s) => s.heading === heading) || null;
+  function bodyDi(doc, heading, inner) {
+    const s = sezione(doc, heading);
+    if (!s) return '\n' + inner + '\n';
+    const ultima = s === doc.sezioni[doc.sezioni.length - 1];
+    let { testa, coda } = s;
+    if (s.inner === '') {   // sezione vuota: forma standard "\n{inner}\n\n---\n\n" (o "\n{inner}\n" + footer se è l'ultima)
+      testa = '\n';
+      if (!coda.replace(/^\n+/, '').startsWith('---')) coda = (ultima && doc.footer) ? '\n' : coda;
+    }
+    return testa + inner + coda + (ultima ? doc.footer : '');
+  }
+  function testo(doc) {
+    const blocchi = doc.sezioni.map((s) => ({ riga: s.riga, heading: s.heading, body: s.testa + s.inner + s.coda }));
+    if (blocchi.length) { blocchi[blocchi.length - 1].body += doc.footer; return doc.fm_raw + ricomponi(doc.pre, blocchi); }
+    return doc.fm_raw + doc.pre + doc.footer;
+  }
+  function bodiesModificati(doc, nuoviInner) {
+    const out = {};
+    const esistenti = Object.fromEntries(doc.sezioni.map((s) => [s.heading, s]));
+    const nuove = Object.keys(nuoviInner).filter((h) => !(h in esistenti));
+    const ultima = doc.sezioni[doc.sezioni.length - 1] || null;
+    for (const [h, inner] of Object.entries(nuoviInner)) {
+      const s = esistenti[h];
+      if (!s) continue;
+      const cambiata = !stessaForma(inner, s.inner);
+      if (cambiata || (nuove.length && s === ultima)) {
+        let body = bodyDi(doc, h, cambiata ? inner : s.inner);
+        if (nuove.length && s === ultima) {
+          if (doc.footer && body.endsWith(doc.footer)) body = body.slice(0, body.length - doc.footer.length);
+          body = body.replace(/\n+$/, '') + '\n\n---\n\n';
+        }
+        out[h] = body;
+      }
+    }
+    nuove.forEach((h, i) => { out[h] = '\n' + nuoviInner[h] + '\n' + (i === nuove.length - 1 ? doc.footer : '\n---\n\n'); });
+    return out;
+  }
+  function campiFrontmatterResoconto(nuovo, vecchio) {
+    const mod = {};
+    for (const [tab, fm] of [['Approvato da', 'approvato_da'], ['Data approvazione', 'data_approvazione']]) {
+      let v = trova(nuovo, tab).trim();
+      if (v === trova(vecchio, tab).trim()) continue;
+      if (fm === 'data_approvazione' && v) {
+        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+        if (!m) return { mod: {}, errore: 'Data approvazione non valida: usa GG/MM/AAAA (o lasciala vuota).' };
+        v = `${m[3]}-${m[2]}-${m[1]}`;
+      }
+      mod[fm] = v;
+    }
+    return { mod, errore: null };
+  }
+  LV.res = { SEZIONI_KV, SEZIONI_TESTO, SEZIONI_NOTE, NOTA_INCOMPLETA, INTRO_ESITO, CHIUSURE, ESITI, spezzaSezioni, ricomponi, scomponiBody, rigaTabella,
+    parseKv, serKv, trova, parsePartecipanti, serPartecipanti, ordinaAdm, parseAzioni, serAzioni, parseEsito, serEsito, stessaForma,
+    parseResocontoDoc, sezione, bodyDi, testo, bodiesModificati, campiFrontmatterResoconto };
+})(window.LV);
+
+/* === 28_verbale.js === */
+/* Verbale di Collaudo: traduzione di resoconti.parse_verbale / sezioni_verbale / ser_verbale. */
+(function (LV) {
+  'use strict';
+  const M = LV.md, R = LV.res;
+  const ESITI_VERBALE = ['Superato', 'Superato con riserva', 'Non superato'];
+  const MAPPA_ESITO = { Superato: ['positivo', 'POSITIVO'], 'Superato con riserva': ['con riserva', 'con riserva'], 'Non superato': ['negativo', 'NEGATIVO'] };
+  const RIEPILOGO = /^- \*\*(\d+)\. (.+?)\*\*\n    - \[([ xX])\] Superato\n    - \[([ xX])\] Non superato/gm;
+  const DETTAGLIO = /^### (\d+)\. (.+?)\s*$/gm;
+  const CHECK = /- \[([ xX])\] (Superato con riserva|Superato|Non superato)/g;
+  const re = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const campo = (testo, label) => { const m = new RegExp(`\\*\\*${re(label)}\\*\\*[ \\t]*(.*?)[ \\t]*(?=[ \\t]*·|\\n|$)`).exec(testo); return m ? m[1].trim() : ''; };
+  const esitoCheck = (blocco) => { for (const m of blocco.matchAll(CHECK)) if (m[1].toLowerCase() === 'x') return m[2]; return ''; };
+  function parseVerbale(rel, text, lastModified) {
+    const corpo = M.splitBody(text);
+    const fm_raw = text.slice(0, text.length - corpo.length);
+    const { pre, blocchi } = R.spezzaSezioni(corpo);
+    const sez = Object.fromEntries(blocchi.map((b) => [b.heading, b.body]));
+    const doc = { rel, lastModified, frontmatter: M.parseFrontmatter(text), fm_raw, intestazione: pre, verifiche: [], esito_complessivo: '', data_verbale: '', presenti: '', riserve: '', problemi: [] };
+    const riepM = Array.from((sez['Riepilogo verifiche'] || '').matchAll(RIEPILOGO));
+    const riepilogo = Object.fromEntries(riepM.map((m) => [+m[1], m[3].toLowerCase() === 'x' ? 'Superato' : m[4].toLowerCase() === 'x' ? 'Non superato' : '']));
+    const dett = sez['Dettaglio verifiche'] || '';
+    const ms = Array.from(dett.matchAll(DETTAGLIO));
+    ms.forEach((m, i) => {
+      const blocco = dett.slice(m.index + m[0].length, i + 1 < ms.length ? ms[i + 1].index : dett.length);
+      const n = +m[1], esito = esitoCheck(blocco);
+      let note = blocco.includes('**Note / anomalie:**') ? blocco.split('**Note / anomalie:**').slice(1).join('**Note / anomalie:**') : '';
+      note = (note + '\n').split(/\n+---[ \t]*\n/)[0].trim();   // l'ultima verifica non assorbe il separatore
+      doc.verifiche.push({ n, nome: m[2], esito, data: campo(blocco, 'Data:'), testato_da: campo(blocco, 'Testato da:'), note });
+      if (n in riepilogo && riepilogo[n] !== esito) doc.problemi.push(`verifica ${n}: riepilogo (${riepilogo[n] || 'vuoto'}) ≠ dettaglio (${esito || 'vuoto'}), vince il dettaglio`);
+    });
+    if (!ms.length) doc.verifiche = riepM.map((m) => ({ n: +m[1], nome: m[2], esito: riepilogo[+m[1]], data: '', testato_da: '', note: '' }));
+    const fin = sez['Esito complessivo'] || '';
+    doc.esito_complessivo = esitoCheck(fin);
+    doc.data_verbale = campo(fin, 'Data verbale:');
+    doc.presenti = campo(fin, 'Presenti:');
+    doc.riserve = campo(fin, 'Riserve / azioni correttive:');
+    return doc;
+  }
+  const box = (c) => (c ? '[x]' : '[ ]');
+  const rstrip = (s) => s.replace(/\s+$/, '');
+  function sezioniVerbale(doc) {
+    const rie = [], det = [];
+    for (const v of doc.verifiche) rie.push(`- **${v.n}. ${v.nome}**`, `    - ${box(v.esito === 'Superato')} Superato`, `    - ${box(v.esito === 'Non superato')} Non superato`);
+    for (const v of doc.verifiche) det.push(`### ${v.n}. ${v.nome}`, '', '**Esito:**', `- ${box(v.esito === 'Superato')} Superato`, `- ${box(v.esito === 'Non superato')} Non superato`, '',
+      rstrip(`**Data:** ${v.data}`) + '  ·  ' + rstrip(`**Testato da:** ${v.testato_da}`), rstrip(`**Note / anomalie:** ${v.note}`), '');
+    const fin = ESITI_VERBALE.map((e) => `- ${box(doc.esito_complessivo === e)} ${e}`);
+    fin.push('', rstrip(`**Data verbale:** ${doc.data_verbale}`), rstrip(`**Presenti:** ${doc.presenti}`), rstrip(`**Riserve / azioni correttive:** ${doc.riserve}`));
+    return { 'Riepilogo verifiche': '\n' + rie.join('\n') + '\n\n---\n\n', 'Dettaglio verifiche': '\n' + det.join('\n').replace(/\n+$/, '') + '\n\n---\n\n', 'Esito complessivo': '\n' + fin.join('\n') + '\n' };
+  }
+  function serVerbale(doc, oggiIso) {
+    const fm = { ...doc.frontmatter, esito_collaudo: (MAPPA_ESITO[doc.esito_complessivo] || ['', ''])[0], aggiornato: oggiIso };
+    const fm_raw = '---\n' + Object.entries(fm).map(([k, v]) => rstrip(`${k}: ${v}`)).join('\n') + '\n---\n';
+    return fm_raw + doc.intestazione + Object.entries(sezioniVerbale(doc)).map(([h, b]) => `## ${h}\n${b}`).join('');
+  }
+  const esitoDaVerbale = (doc) => (MAPPA_ESITO[doc.esito_complessivo] || ['', ''])[1];
+  const riallineaEsitoDaVerbale = (esito, verbale) => ({ ...esito, casi: verbale.verifiche.map((v) => ({ nome: v.nome, esito: v.esito })), esito: esitoDaVerbale(verbale) || esito.esito });
+  LV.verb = { ESITI_VERBALE, MAPPA_ESITO, parseVerbale, sezioniVerbale, serVerbale, esitoDaVerbale, riallineaEsitoDaVerbale };
+})(window.LV);
+
+/* === 29_scheletro.js === */
+/* Scheletro del nuovo resoconto, fasi, team dalla scheda e writer della tabella Riunioni: traduzione di
+   resoconti.py (crea_scheletro & co.), mail_utils.team_from_release, writers.salva_sezioni/aggiungi_riunione/set_riunione_inviata. */
+(function (LV) {
+  'use strict';
+  const M = LV.md, R = LV.res, V = LV.verb;
+  const FASI = ['Startup', 'Prima Analisi', 'SAL', 'Collaudo'];
+  const TITOLI = { Startup: 'STARTUP', 'Prima Analisi': 'PRIMA ANALISI', Collaudo: 'COLLAUDO' };
+  const MESI = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const PROT = /^(\S+)\s+del\s+(\d{2}\/\d{2}\/\d{4})/;
+  const ARGOMENTI_COLLAUDO = 'Relativamente al progetto in questione è stato verificato che:\n\n'
+    + '- Il documento di analisi è stato protocollato in data {da}, sul Registro Contratto Sogei, in ingresso, con n. {na};\n'
+    + "- L'analisi è stata approvata in data {dp}, sul Registro Ufficiale, in uscita, con nota prot. n. {np};\n"
+    + '- La disponibilità al collaudo (fine avviamento) è stata protocollata in data {dd}, sul Registro Contratto Sogei, in ingresso, con n. {nd}.\n\n'
+    + "Pertanto, il team di progetto procede con l'esecuzione dei test previsti nel documento di analisi.";
+  const rstrip = (s) => s.replace(/\s+$/, '');
+  const it = (iso) => `${iso.slice(8)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  const formatDateIt = (iso) => `${+iso.slice(8)} ${MESI[+iso.slice(5, 7)]} ${iso.slice(0, 4)}`;
+  function rangoFase(fase) { const f = fase.trim().toLowerCase(); return f.startsWith('startup') ? 0 : f.includes('analisi') ? 1 : f.startsWith('sal') ? 2 : f.startsWith('collaudo') ? 3 : null; }
+  function fasiAmmesse(fatte) { const r = fatte.map(rangoFase).filter((x) => x !== null); return r.length ? FASI.slice(Math.max(...r)) : [...FASI]; }
+  function prossimoSal(fasi) { const nn = fasi.map((f) => /SAL\s*#?\s*(\d+)/.exec(f)).filter(Boolean).map((m) => +m[1]); return nn.length ? Math.max(...nn) + 1 : 1; }
+  const etichettaFase = (fase, n) => (fase === 'SAL' ? `SAL ${n}` : fase.trim());
+  const faseTabella = (e) => (e.startsWith('SAL ') ? e.replace('SAL ', 'SAL #') : e);
+  const tipoTitolo = (e) => (e.startsWith('SAL ') ? `STATO AVANZAMENTO LAVORI N.${e.slice(4)}` : (TITOLI[e] ?? e.toUpperCase()));
+  const titoloResoconto = (codice, e, iso) => `${codice} - RESOCONTO RIUNIONE DI ${tipoTitolo(e)} DEL ${it(iso)}`;
+  const nomeFile = (codice, e, iso) => `${codice} - ${iso.replaceAll('-', '')} Resoconto ${e}.md`;
+  function formulaObiettivo(e, iso, fm) {
+    const g = formatDateIt(iso), sp = fm.descrizione_sottoprogetto || '', ril = fm.descrizione_rilascio || '';
+    if (e === 'Startup') return `In data ${g} si è svolta la riunione di startup, tenutasi a distanza, tra ADM e Sogei sul tema riguardante "${sp}", per verificare la fattibilità di quanto previsto nell'obiettivo "${ril}".`;
+    if (e === 'Prima Analisi') return `In data ${g} si è svolta la prima riunione di analisi, tenutasi a distanza, tra ADM e Sogei sul tema riguardante "${sp}", con l'obiettivo di avviare l'analisi dei requisiti per il rilascio "${ril}".`;
+    if (e.startsWith('SAL ')) return `In data ${g} si è svolta la riunione di Stato Avanzamento Lavori n.${e.slice(4)}, tenutasi a distanza, tra ADM e Sogei per verificare l'avanzamento delle attività relative al rilascio "${ril}".`;
+    if (e === 'Collaudo') return `In data ${g} si è svolta la riunione di collaudo, tenutasi a distanza, tra ADM e Sogei sul tema riguardante "${sp}", per eseguire la verifica di conformità del rilascio "${ril}".`;
+    return `In data ${g} si è svolta la riunione "${e}", tenutasi a distanza, tra ADM e Sogei sul tema riguardante "${sp}", relativa al rilascio "${ril}".`;
+  }
+  const prot = (v) => { const m = PROT.exec((v || '').trim()); return m ? [m[2], m[1]] : ['DA COMPLETARE', 'DA COMPLETARE']; };
+  function argomentiCollaudo(fm) {
+    const [da, na] = prot(fm.protocollo_analisi), [dp, np] = prot(fm.protocollo_approvazione_analisi), [dd, nd] = prot(fm.protocollo_disponibilita_collaudo);
+    return ARGOMENTI_COLLAUDO.replace('{da}', da).replace('{na}', na).replace('{dp}', dp).replace('{np}', np).replace('{dd}', dd).replace('{nd}', nd);
+  }
+  const siNo = (v) => (/^(si|sì|true|yes)/i.test((v || '').trim().normalize('NFD').replace(/[̀-ͯ]/g, '')) ? 'SI' : 'NO');
+  // ---- team dalla scheda (mail_utils.team_from_release) ----
+  function teamFromRelease(text, persone) {
+    const perCognome = (c) => persone.find((n) => n.toLowerCase().startsWith(c.toLowerCase())) || null;
+    const result = { PM: [], RA: [], RP: [], RB: [], SOGEI: [] };
+    for (const m of text.matchAll(/\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|/g)) {
+      const ruoloUp = m[1].toUpperCase(), nomeCell = m[2];
+      if (['Nome', '---', ''].includes(nomeCell.trim())) continue;
+      for (const role of ['PM', 'RA', 'RP', 'RB']) {
+        if (ruoloUp.includes(`(${role})`) || ruoloUp.startsWith(role)) {
+          if (nomeCell.includes(' - ') || nomeCell.includes(' – ')) {
+            for (const c of nomeCell.split(/\s*[-–]\s*/)) { const cog = c.trim(); if (cog) result[role].push(perCognome(cog) || cog); }
+          } else result[role].push(nomeCell.trim());
+          break;
+        }
+      }
+      if (ruoloUp.includes('REFERENTE BUSINESS')) {
+        const nome = nomeCell.trim(), parti = nome.split(/\s+/).filter(Boolean);
+        const u = parti.length ? parti[parti.length - 1] : nome;
+        const cognome = parti.length ? u[0].toUpperCase() + u.slice(1).toLowerCase() : nome;
+        result.RB = [perCognome(cognome) || nome];
+      }
+    }
+    const ms = /\*\*SOGEI:\*\*\s*(.+)/.exec(text);
+    if (ms) for (const part of ms[1].split(',')) { const n = part.replace(/\s*\([^)]+\)/g, '').trim(); if (n) result.SOGEI.push(n); }
+    const fm = M.parseFrontmatter(text);
+    for (const [role, key] of [['PM', 'pm'], ['RA', 'ra'], ['RP', 'rp'], ['RB', 'referente_business'], ['SOGEI', 'referente_sogei']]) {
+      if (!result[role].length && (fm[key] || '').trim()) result[role] = fm[key].split(/\s*[-–]\s*|\s*,\s*/).map((n) => n.trim()).filter(Boolean);
+    }
+    return result;
+  }
+  const ruolo = (sigla, nome, info) => { const i = info(nome) || {}; const t = [(i.direzione || '').trim(), (i.ufficio || '').trim()].filter(Boolean).join(' – '); return sigla ? rstrip(`(${sigla}) ${t}`) : t; };
+  const stesso = (a, b) => { const s = (x) => new Set(x.toLowerCase().split(/\s+/).filter(Boolean)); const A = s(a), B = s(b); return A.size === B.size && [...A].every((x) => B.has(x)); };
+  const sogeiOrdinati = (nomi, fm) => { const ref = (fm.referente_sogei || '').trim(); const primi = nomi.filter((n) => ref && stesso(n, ref)); return primi.concat(nomi.filter((n) => !primi.includes(n))); };
+  const partecipantiDaTeam = (fm, team, info) => ({ adm: ['PM', 'RA', 'RP', 'RB'].flatMap((s) => (team[s] || []).map((nome) => ({ ruolo: ruolo(s, nome, info), ufficio: '', nome }))), sogei: sogeiOrdinati([...(team.SOGEI || [])], fm) });
+  function creaScheletro(fm, etichetta, dataIso, { team, variante = null, verbale = null, trascritto = '', info = () => ({}), oggiIso }) {
+    const codice = fm.codice_rilascio || '', collaudo = etichetta === 'Collaudo';
+    if (collaudo && !(variante in R.CHIUSURE)) throw new Error('variante di collaudo obbligatoria: firma | telematica | telematica_in_riunione');
+    const { adm, sogei } = partecipantiDaTeam(fm, team, info);
+    const nota = R.NOTA_INCOMPLETA;
+    const riunione = { DATA: it(dataIso), Canale: 'MICROSOFT TEAMS' };
+    const resoconto = { 'COMPILATO DA': 'Astolfo Lunardi', 'DATA COMPILAZIONE': it(oggiIso), 'Approvato da': 'Partecipanti', 'Data approvazione': '' };
+    const obiettivo = { 'CODICE PROGETTO': fm.codice_progetto || '', 'DESCRIZIONE PROGETTO': fm.descrizione_progetto || '', 'CODICE SOTTOPROGETTO': fm.codice_sottoprogetto || '',
+      'DESCRIZIONE SOTTOPROGETTO': fm.descrizione_sottoprogetto || '', 'CODICE RILASCIO': codice, 'DESCRIZIONE RILASCIO': fm.descrizione_rilascio || '',
+      'VINCOLI NORMATIVI': siNo(fm.vincoli_normativi), 'VARIAZIONE DATE PREVISTE': 'NO', 'VARIAZIONE EFFORT': 'NO', PRIVACY: siNo(fm.privacy) };
+    const sezioni = [['RIUNIONE', R.serKv(riunione)], ['RESOCONTO', R.serKv(resoconto)], ['OBIETTIVO', R.serKv(obiettivo)],
+      ['LISTA PARTECIPANTI', R.serPartecipanti(adm, sogei, nota)], ['OBIETTIVO DELLA RIUNIONE', formulaObiettivo(etichetta, dataIso, fm)]];
+    if (collaudo) {
+      let esito = { intro: R.INTRO_ESITO, casi: [], osservazioni: '', esito: '', chiusura: R.CHIUSURE[variante] };
+      if (verbale) esito = V.riallineaEsitoDaVerbale(esito, verbale);
+      sezioni.push(['ARGOMENTI TRATTATI', argomentiCollaudo(fm)], ['ESITO', R.serEsito(esito)]);
+    } else sezioni.push(['ARGOMENTI TRATTATI', ''], ['AZIONI CONCORDATE', '']);
+    const fmOut = [['codice_rilascio', codice], ['tipo_riunione', etichetta], ['data_riunione', dataIso], ['data_compilazione', oggiIso], ['compilato_da', 'Astolfo Lunardi'], ['approvato_da', 'Partecipanti'], ['data_approvazione', ''], ['inviato', 'false']];
+    let testo = '---\n' + fmOut.map(([k, v]) => rstrip(`${k}: ${v}`)).join('\n') + '\n---\n\n';
+    testo += `# ${titoloResoconto(codice, etichetta, dataIso)}\n\n[[${codice}]]\n\n---\n\n`;
+    testo += sezioni.map(([h, inner]) => (inner ? `## ${h}\n\n${inner}\n\n---\n\n` : `## ${h}\n\n\n---\n\n`)).join('');
+    testo += (trascritto ? `*Generato da trascritto: \`${trascritto}\`*\n` : '') + '*Stato: BOZZA — non ancora inviato*\n';
+    return testo;
+  }
+  // ---- writer della scheda (writers.py) ----
+  function spezzaFile(text) { const corpo = M.splitBody(text); const { pre, blocchi } = R.spezzaSezioni(corpo); return { fm_raw: text.slice(0, text.length - corpo.length), pre, blocchi }; }
+  function salvaSezioni(text, bodies) {
+    const sp = spezzaFile(text);
+    let pre = sp.pre;
+    const blocchi = sp.blocchi;
+    const presenti = new Set(blocchi.map((b) => b.heading));
+    for (const b of blocchi) if (b.heading in bodies) { b.body = bodies[b.heading]; if (!b.riga.endsWith('\n')) b.riga += '\n'; }
+    for (const [heading, body] of Object.entries(bodies)) {
+      if (presenti.has(heading)) continue;
+      if (blocchi.length && !blocchi[blocchi.length - 1].body.endsWith('\n')) blocchi[blocchi.length - 1].body += '\n';
+      else if (!blocchi.length && pre && !pre.endsWith('\n')) pre += '\n';
+      blocchi.push({ riga: `## ${heading}\n`, heading, body });
+    }
+    return sp.fm_raw + R.ricomponi(pre, blocchi);
+  }
+  const celleDi = (r) => r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  function aggiungiRiunione(text, dataIso, faseTab, trascritto, stem) {
+    const { blocchi } = spezzaFile(text);
+    const b = blocchi.find((x) => x.heading === 'Riunioni');
+    const res = stem !== '—' ? `[[${stem}]]` : '—';
+    const riga5 = `| ${dataIso} | ${faseTab} | \`${trascritto}\` | ${res} | ❌ |`, riga4 = `| ${dataIso} | ${faseTab} | ${res} | ❌ |`;
+    const INT = '| Data | Fase | Trascritto | Resoconto | Inviato |\n|------|------|-----------|-----------|---------|\n';
+    if (!b) return salvaSezioni(text, { Riunioni: '\n' + INT + riga5 + '\n\n' });
+    const righe = b.body.split('\n');
+    const idxTab = righe.map((r, i) => (r.trim().startsWith('|') ? i : -1)).filter((i) => i >= 0);
+    if (!idxTab.length) return salvaSezioni(text, { Riunioni: b.body.replace(/\n+$/, '') + (b.body.trim() ? '\n\n' : '\n') + INT + riga5 + '\n\n' });
+    const header = celleDi(righe[idxTab[0]]);
+    const nuova = header.length >= 5 ? riga5 : riga4;
+    for (const i of idxTab.slice(2)) {   // riga della stessa riunione senza resoconto: la completo, non la duplico
+      const c = celleDi(righe[i]);
+      if (c.length >= 4 && c[0] === dataIso && c[1] === faseTab && c[c.length - 2] === '—') {
+        c[c.length - 2] = res;
+        if (c.length >= 5 && trascritto && !c[2].replace(/[` ]/g, '')) c[2] = `\`${trascritto}\``;
+        righe[i] = '| ' + c.join(' | ') + ' |';
+        return salvaSezioni(text, { Riunioni: righe.join('\n') });
+      }
+    }
+    const ultima = idxTab[idxTab.length - 1];
+    const resto = righe[ultima].replaceAll('|', '').split(/\s+/).filter(Boolean);
+    if (resto.every((x) => x === '—' || x === '-')) righe[ultima] = nuova; else righe.splice(ultima + 1, 0, nuova);
+    return salvaSezioni(text, { Riunioni: righe.join('\n') });
+  }
+  function setRiunioneInviata(text, stem, inviata) {
+    const [da, a] = inviata ? ['❌', '✅'] : ['✅', '❌'];
+    const rx = new RegExp(`(\\|[^\\n]*\\[\\[${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\]]*\\]\\][^\\n]*)\\|\\s*${da}\\s*\\|`, 'g');
+    return text.replace(rx, `$1| ${a} |`);
+  }
+  LV.sk = { FASI, rangoFase, fasiAmmesse, prossimoSal, etichettaFase, faseTabella, titoloResoconto, nomeFile, formatDateIt, formulaObiettivo, argomentiCollaudo,
+    teamFromRelease, partecipantiDaTeam, creaScheletro, salvaSezioni, aggiungiRiunione, setRiunioneInviata };
+})(window.LV);
+
+/* === 30_vault.js === */
+/* Indice del vault (traduzione di leviathadm/vault/index.py e paths.py) e accesso alla cartella
+   (File System Access API; nessun handle memorizzato: la cartella si sceglie a ogni apertura). */
+(function (LV) {
+  'use strict';
+  const MO = LV.modelli;
+  const ESCLUSE = new Set(['.git', '.claude', 'Bozze da inviare', 'node_modules', '__pycache__', 'docs', 'LeviathADM', 'leviathadm', 'leviathadm_web']);
+  const PIANO_RE = /^PO (\d{4})$/;
+  const RESOCONTO_GLOB = /^.* - 20.* Resoconto .*\.md$/;         // glob "* - 20* Resoconto *.md"
+  const VERBALE_GLOB = /^.* - 20.* Verbale di Collaudo\.md$/;
+  const MSG_CARTELLA = 'Cartella non riconosciuta: manca una cartella "PO <anno>" (scegli la root del vault).';
+  const escluso = (rel) => rel.split('/').slice(0, -1).some((p) => ESCLUSE.has(p) || p.startsWith('.'));
+  const normalizzaTesto = (raw) => ({ text: raw.replace(/\r\n/g, '\n'), crlf: raw.includes('\r\n') });
+  const haPiano = (files) => Object.keys(files).some((r) => PIANO_RE.test(r.split('/')[0]));
+
+  function costruisciIndice(files) {
+    const idx = { anni: [], piani: {}, note: {}, perNome: {}, files, versione: (LV.indice?.versione || 0) + 1 };
+    const rels = Object.keys(files).sort();
+    for (const rel of rels) {
+      const m = PIANO_RE.exec(rel.split('/')[0]);
+      if (m && !idx.piani[+m[1]]) idx.piani[+m[1]] = { anno: +m[1], rilasci: {} };
+    }
+    const inCartella = (dir) => rels.filter((r) => r.startsWith(dir + '/'));
+    for (const rel of rels) {
+      const f = files[rel];
+      if (!rel.endsWith('.md') || f.text === null || escluso(rel)) continue;
+      const nota = MO.parseNota(rel, f.text, f.lastModified);
+      idx.note[nota.id] = nota;
+      for (const chiave of [LV.md.normalizza(nota.titolo), LV.md.normalizza(MO.stemDi(rel))]) if (!(chiave in idx.perNome)) idx.perNome[chiave] = nota.id;   // index._per_titolo: la prima nota vince
+      const anno = PIANO_RE.exec(rel.split('/')[0]);
+      if (!anno || nota.tipo !== 'rilascio') continue;
+      const dir = MO.cartella(rel);
+      const resoconti = inCartella(dir)
+        .filter((r) => { const resto = r.slice(dir.length + 1); return RESOCONTO_GLOB.test(resto) && (!resto.includes('/') || (resto.startsWith('inviati/') && resto.split('/').length === 2)); })
+        .map((r) => MO.parseResoconto(r, files[r].text || '', {
+          haDocx: r.replace(/\.md$/, '.docx') in files, haMsg: r.replace(/\.md$/, '.msg') in files, haPdf: r.replace(/\.md$/, '.pdf') in files }));
+      const verbali = inCartella(dir).filter((r) => { const resto = r.slice(dir.length + 1); return !resto.includes('/') && VERBALE_GLOB.test(resto); });
+      const r = MO.parseRilascio(rel, f.text, f.lastModified, resoconti, verbali);
+      idx.piani[+anno[1]].rilasci[r.codice] = r;
+    }
+    idx.anni = Object.keys(idx.piani).map(Number).sort((a, b) => b - a);
+    return idx;
+  }
+
+  // ---- accesso alla cartella -------------------------------------------------------------
+  // Nessun handle memorizzato: le pagine file:// condividono l'origine, e un "Riapri <cartella>" mostrerebbe il nome
+  // dell'ultimo vault aperto da qualunque copia di leviathadm.html. Il database delle versioni precedenti viene rimosso.
+  try { indexedDB.deleteDatabase('leviathadm'); } catch (e) { /* storage non disponibile: niente da cancellare */ }
+  async function leggiTesto(file) {   // UTF-8 con eventuale BOM: text() lo toglie in silenzio, quindi si guardano i byte
+    if (typeof file.arrayBuffer !== 'function') return { testo: await file.text(), bom: false };   // handle finti minimi dei test
+    const buf = await file.arrayBuffer();
+    const u = new Uint8Array(buf);
+    const bom = u.length >= 3 && u[0] === 0xEF && u[1] === 0xBB && u[2] === 0xBF;
+    return { testo: new TextDecoder().decode(buf), bom };
+  }
+  async function leggiTutto(dir, prefisso, files, saltati, dirs) {
+    dirs[prefisso] = dir;   // handle delle cartelle: servono per creare file nuovi (creaFile)
+    for await (const [nome, h] of dir.entries()) {
+      const rel = prefisso ? `${prefisso}/${nome}` : nome;
+      if (h.kind === 'directory') { if (!ESCLUSE.has(nome) && !nome.startsWith('.')) await leggiTutto(h, rel, files, saltati, dirs); continue; }
+      if (!nome.endsWith('.md')) {   // basta il nome (.msg/.pdf); del .docx serve anche la data per "docx superato" (solo metadato, nessuna lettura del contenuto)
+        let lm = null;
+        if (nome.endsWith('.docx')) { try { lm = (await h.getFile()).lastModified; } catch (e) { lm = null; } }
+        files[rel] = { text: null, lastModified: lm, handle: h };
+        continue;
+      }
+      try {
+        const file = await h.getFile();
+        const { testo: raw, bom } = await leggiTesto(file);     // §3.6: BOM rilevato sui byte (text() lo scarta) e conservato in scrittura
+        const n = normalizzaTesto(raw);
+        files[rel] = { text: n.text, crlf: n.crlf, bom, lastModified: file.lastModified, handle: h };
+      } catch (e) {   // come index._carica su OSError: il file si salta, il resto dell'indice vive
+        saltati.push(`${rel}: ${e.message}`);
+      }
+    }
+    return files;
+  }
+  async function haCartellaPiano(dir) {
+    for await (const [nome, h] of dir.entries()) if (h.kind === 'directory' && PIANO_RE.test(nome)) return true;
+    return false;
+  }
+  let handleCorrente = null;
+  async function apriHandle(h) {
+    if ((await h.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('Permesso negato sulla cartella.');
+    if (!(await haCartellaPiano(h))) throw new Error(`${MSG_CARTELLA} Aperta: "${h.name}".`);   // prima di leggere qualunque file
+    LV.emit('lettura', { stato: 'inizio', nome: h.name });
+    const saltati = [], dirs = {};
+    const files = await leggiTutto(h, '', {}, saltati, dirs);
+    LV.ultimaLettura = { file: Object.keys(files).length, saltati };
+    LV.emit('lettura', { stato: 'fine', ...LV.ultimaLettura });
+    handleCorrente = h;
+    LV.radice = { nome: h.name };
+    return apriDaMappa(files, dirs);
+  }
+  function apriDaMappa(files, dirs) {
+    if (!haPiano(files)) { LV.emit('errore-vault', MSG_CARTELLA); return null; }
+    LV.indice = costruisciIndice(files);
+    LV.indice.dirs = dirs;    // undefined in memoria (test): le scritture restano nella mappa
+    LV.emit('indice', LV.indice);
+    return LV.indice;
+  }
+
+  // ---- scrittura ---------------------------------------------------------------------------
+  class ConflittoModifica extends Error {
+    constructor(rel) { super(`${rel}: il file è cambiato sul disco (sync o Obsidian). Ricarica e ripeti la modifica.`); this.rel = rel; }
+  }
+  let differita = 0, daRifare = false;
+  async function inBlocco(fn) {   // operazioni composte: un solo reindicizza alla fine (anche su errore)
+    differita += 1;
+    try { return await fn(); } finally { differita -= 1; if (!differita && daRifare) { daRifare = false; reindicizza(); } }
+  }
+  function reindicizza() {
+    if (differita) { daRifare = true; return; }
+    const dirs = LV.indice?.dirs;
+    LV.indice = costruisciIndice(LV.indice.files);
+    LV.indice.dirs = dirs;
+    LV.emit('indice-aggiornato', LV.indice);   // non 'indice': la shell non deve rinavigare (perderebbe un modulo compilato)
+  }
+  async function cartellaSeEsiste(relDir) {  // handle della cartella se esiste sul disco, altrimenti null (niente creazioni)
+    const dirs = LV.indice.dirs;
+    if (dirs[relDir]) return dirs[relDir];
+    let h = dirs[''], acc = '';
+    for (const p of relDir.split('/').filter(Boolean)) {
+      acc = acc ? `${acc}/${p}` : p;
+      if (!dirs[acc]) { try { dirs[acc] = await h.getDirectoryHandle(p); } catch (e) { if (e.name === 'NotFoundError') return null; throw e; } }
+      h = dirs[acc];
+    }
+    return h;
+  }
+  async function cartellaPer(relDir) {       // handle della cartella (creandola se manca), a partire dalla root
+    const dirs = LV.indice.dirs;
+    if (dirs[relDir]) return dirs[relDir];
+    let h = dirs[''], acc = '';
+    for (const p of relDir.split('/').filter(Boolean)) {
+      acc = acc ? `${acc}/${p}` : p;
+      h = dirs[acc] || await h.getDirectoryHandle(p, { create: true });
+      dirs[acc] = h;
+    }
+    return h;
+  }
+  async function scriviSuHandle(handle, text, crlf, bom = false) {
+    const w = await handle.createWritable();
+    await w.write((bom ? '\ufeff' : '') + (crlf ? text.replace(/\r?\n/g, '\r\n') : text));
+    await w.close();
+  }
+  async function scriviFile(rel, text, attesoLastModified) {
+    const f = LV.indice.files[rel];
+    if (!f) throw new Error(`File non in indice: ${rel}`);
+    if (f.handle) {
+      const suDisco = await f.handle.getFile().catch(() => null);   // guardia: il disco deve essere quello letto
+      if (!suDisco || suDisco.lastModified !== attesoLastModified) throw new ConflittoModifica(rel);
+      const testoDisco = await leggiTesto(suDisco).catch(() => null);   // anche il testo: due scritture nello stesso millisecondo
+      if (testoDisco === null || normalizzaTesto(testoDisco.testo).text !== f.text) throw new ConflittoModifica(rel);
+      await scriviSuHandle(f.handle, text, !!f.crlf, !!f.bom);
+      const dopo = await f.handle.getFile();
+      Object.assign(f, { text, lastModified: dopo.lastModified });
+    } else {
+      if (f.lastModified !== attesoLastModified) throw new ConflittoModifica(rel);
+      Object.assign(f, { text, lastModified: Date.now() + Math.random() });
+    }
+    reindicizza();
+  }
+  async function creaFile(rel, text) {
+    // mai sovrascrivere: né un file in indice (anche con maiuscole diverse: NTFS non le distingue),
+    // né uno comparso sul disco dopo la lettura (sync, Obsidian) — come crea_file Python (path.exists())
+    const giu = rel.toLowerCase();
+    if (Object.keys(LV.indice.files).some((k) => k.toLowerCase() === giu)) throw new Error(`Esiste già: ${rel}`);
+    const nome = rel.split('/').at(-1), relDir = rel.split('/').slice(0, -1).join('/');
+    if (LV.indice.dirs) {
+      const d = await cartellaPer(relDir);
+      let presente = true;
+      try { await d.getFileHandle(nome); } catch (e) { if (e.name !== 'NotFoundError') throw e; presente = false; }
+      if (presente) throw new Error(`Esiste già: ${rel} (sul disco, non ancora in indice: ricarica)`);
+      const h = await d.getFileHandle(nome, { create: true });
+      await scriviSuHandle(h, text, false);    // file nuovi in LF: git li normalizza
+      const f = await h.getFile();
+      LV.indice.files[rel] = { text, crlf: false, lastModified: f.lastModified, handle: h };
+    } else {
+      LV.indice.files[rel] = { text, crlf: false, lastModified: Date.now() };
+    }
+    reindicizza();
+  }
+  async function spostaFile(relSrc, relDest) {
+    const f = LV.indice.files[relSrc];
+    if (!f) throw new Error(`File non in indice: ${relSrc}`);
+    if (LV.indice.files[relDest]) throw new Error(`Esiste già: ${relDest}`);
+    const nome = relDest.split('/').at(-1), relDir = relDest.split('/').slice(0, -1).join('/');
+    if (LV.indice.dirs) {
+      const d = await cartellaPer(relDir);
+      let presente = true;
+      try { await d.getFileHandle(nome); } catch (e) { if (e.name !== 'NotFoundError') throw e; presente = false; }
+      if (presente) throw new Error(`Esiste già: ${relDest} (sul disco)`);
+      const src = await f.handle.getFile();
+      if (f.text !== null && src.lastModified !== f.lastModified) throw new ConflittoModifica(relSrc);   // guardia: mai spostare un testo diverso da quello letto
+      const bytes = await src.arrayBuffer();          // byte per byte: vale anche per .docx/.pdf
+      const h = await d.getFileHandle(nome, { create: true });
+      const w = await h.createWritable(); await w.write(bytes); await w.close();
+      const srcDir = LV.indice.dirs[relSrc.split('/').slice(0, -1).join('/')];
+      try { await srcDir.removeEntry(relSrc.split('/').at(-1)); }
+      catch (e) { await d.removeEntry(nome).catch(() => {}); throw e; }   // sorgente bloccata (Word/Outlook): via la copia appena scritta, altrimenti resta orfana e blocca il retry
+      const nuovo = await h.getFile();
+      const n = f.text !== null ? normalizzaTesto(new TextDecoder().decode(bytes)) : null;   // il testo in indice = i byte copiati
+      LV.indice.files[relDest] = { ...f, ...(n ? { text: n.text, crlf: n.crlf } : {}), handle: h, lastModified: nuovo.lastModified };
+    } else {
+      LV.indice.files[relDest] = { ...f, lastModified: Date.now() + Math.random() };
+    }
+    delete LV.indice.files[relSrc];
+    reindicizza();
+  }
+  async function eliminaFile(rel) {
+    const f = LV.indice.files[rel];
+    if (!f) return;
+    if (LV.indice.dirs) await LV.indice.dirs[rel.split('/').slice(0, -1).join('/')].removeEntry(rel.split('/').at(-1));
+    delete LV.indice.files[rel];
+    reindicizza();
+  }
+  async function preflightMosse(sorgenti, destDir, altriRel, dove = 'in inviati/') {   // §3.3: collisioni (indice + disco) e file cambiati, prima di spostare qualunque cosa
+    const giu = new Set(Object.keys(LV.indice.files).map((k) => k.toLowerCase()));
+    const nomi = sorgenti.map((k) => k.split('/').at(-1));
+    const collisioni = nomi.filter((n) => giu.has(`${destDir}/${n}`.toLowerCase()));
+    if (LV.indice.dirs) {
+      const d = await cartellaSeEsiste(destDir);   // non crea inviati/ se poi rifiuta
+      for (const n of nomi) { if (collisioni.includes(n) || !d) continue; try { await d.getFileHandle(n); collisioni.push(n); } catch (e) { if (e.name !== 'NotFoundError') throw e; } }
+      for (const k of [...sorgenti, ...altriRel]) {
+        const f = LV.indice.files[k];
+        if (!f || f.text === null) continue;
+        const suDisco = await f.handle.getFile().catch(() => null);
+        if (!suDisco || suDisco.lastModified !== f.lastModified) throw new ConflittoModifica(k);
+      }
+    }
+    if (collisioni.length) throw new Error(`già presenti ${dove}: ${collisioni.join(', ')}`);
+  }
+  function parziale(msg) { const e = new Error(`${msg} — file già spostati: verifica la cartella del rilascio`); e.parziale = true; return e; }
+  async function spostaConRollback(coppie) {   // [[src, dest], …] in ordine; su errore rimette a posto quanto già spostato (come writers.riporta_in_bozza)
+    const fatte = [];
+    try { for (const [k, dest] of coppie) { await spostaFile(k, dest); fatte.push([k, dest]); } }
+    catch (e) {
+      const falliti = [];
+      for (const [k, dest] of fatte.reverse()) await spostaFile(dest, k).catch((x) => falliti.push(`${dest.split('/').at(-1)} (${x.message})`));
+      if (!falliti.length) throw e;
+      throw parziale(`${e.message}; rollback fallito per ${falliti.join(', ')}`);
+    }
+  }
+  const riportaInBozza = (res, scheda) => inBlocco(() => _riportaInBozza(res, scheda));
+  async function _riportaInBozza(res, scheda) {
+    // regola CLAUDE.md "Rettifica" (writers.riporta_in_bozza): file fuori da inviati/, .msg eliminato,
+    // inviato: false, scadenza vuota, ❌ nella scheda. Prima si verificano tutte le collisioni, poi si sposta.
+    const parti = res.rel.split('/');
+    if (parti.at(-2) !== 'inviati') throw new Error(`${parti.at(-1)} non è in inviati/`);
+    const dirInv = parti.slice(0, -1).join('/'), dirDest = parti.slice(0, -2).join('/');
+    const stem = res.stem;
+    const files = Object.keys(LV.indice.files).filter((k) => k.startsWith(`${dirInv}/${stem}.`) && !k.endsWith('.msg'));
+    await preflightMosse(files, dirDest, [scheda.rel], 'nella cartella del rilascio');
+    files.sort((a, b) => (a.endsWith('.md') ? 1 : 0) - (b.endsWith('.md') ? 1 : 0));   // il .md per ultimo
+    await spostaConRollback(files.map((k) => [k, `${dirDest}/${k.split('/').at(-1)}`]));
+    const nuovo = `${dirDest}/${stem}.md`;
+    const f = LV.indice.files[nuovo];
+    try {
+      await scriviFile(nuovo, LV.md.updateFrontmatterKeys(f.text, { inviato: 'false', data_scadenza_approvazione: '' }), f.lastModified);
+      const s = LV.indice.files[scheda.rel];
+      const testoScheda = LV.sk.setRiunioneInviata(s.text, stem, false);
+      if (testoScheda !== s.text) await scriviFile(scheda.rel, testoScheda, s.lastModified);
+    } catch (e) { throw parziale(e.message); }
+    const avvisi = [];
+    const msg = `${dirInv}/${stem}.msg`;   // la mail già inviata: per ultima, e se bloccata resta solo un avviso
+    if (LV.indice.files[msg]) { try { await eliminaFile(msg); } catch (e) { avvisi.push(`${stem}.msg non eliminato (${e.message}): cancellalo a mano, altrimenti il sync non rigenera la mail`); } }
+    return { nuovo, avvisi };
+  }
+  const segnaInviato = (res, scheda, oggiIso) => inBlocco(() => _segnaInviato(res, scheda, oggiIso));
+  async function _segnaInviato(res, scheda, oggiIso) {   // archivia_bozza: .docx/.msg/.md in inviati/, inviato: true + scadenza +5gg lavorativi, ✅ nella scheda
+    const stem = res.stem, dir = res.rel.split('/').slice(0, -1).join('/');
+    if (dir.endsWith('/inviati')) throw new Error(`${stem}.md è già in inviati/`);
+    const dirInv = `${dir}/inviati`;
+    if (LV.indice.dirs && LV.indice.dirs[dir]) {   // come exists() in archivia_inviati: un .docx/.msg comparso sul disco dopo la lettura viene spostato anche lui
+      for (const e of ['.docx', '.msg']) {
+        const k = `${dir}/${stem}${e}`;
+        if (k in LV.indice.files) continue;
+        try { LV.indice.files[k] = { text: null, lastModified: null, handle: await LV.indice.dirs[dir].getFileHandle(`${stem}${e}`) }; } catch (x) { if (x.name !== 'NotFoundError') throw x; }
+      }
+    }
+    const sorgenti = ['.docx', '.msg', '.md'].map((e) => `${dir}/${stem}${e}`).filter((k) => k in LV.indice.files);   // il .md per ultimo
+    await preflightMosse(sorgenti, dirInv, [scheda.rel]);
+    await spostaConRollback(sorgenti.map((k) => [k, `${dirInv}/${k.split('/').at(-1)}`]));
+    const nuovo = `${dirInv}/${stem}.md`;
+    const scadenza = LV.cruscotto.businessDaysAfter(oggiIso, 5);
+    const f = LV.indice.files[nuovo];
+    try { await scriviFile(nuovo, LV.md.updateFrontmatterKeys(f.text, { inviato: 'true', data_scadenza_approvazione: scadenza }), f.lastModified); }
+    catch (e) { throw parziale(e.message); }
+    const avvisi = [];
+    const s = LV.indice.files[scheda.rel];
+    const testoScheda = LV.sk.setRiunioneInviata(s.text, stem, true);
+    if (testoScheda !== s.text) { try { await scriviFile(scheda.rel, testoScheda, s.lastModified); } catch (e) { avvisi.push(`scheda non aggiornata (${e.message}): metti ✅ a mano nella riga Riunioni`); } }
+    else if (!s.text.includes(`[[${stem}`)) avvisi.push('riga Riunioni non trovata nella scheda: nessun ✅ scritto');
+    return { nuovo, scadenza, avvisi };
+  }
+  const segnaConvocazioneInviata = (relEml) => inBlocco(() => _segnaConvocazioneInviata(relEml));
+  async function _segnaConvocazioneInviata(relEml) {   // archivia_convocazione: .eml (+ .ics) in inviati/
+    const dir = relEml.split('/').slice(0, -1).join('/'), stem = relEml.split('/').at(-1).replace(/\.eml$/, '');
+    const sorgenti = ['.eml', '.ics'].map((e) => `${dir}/${stem}${e}`).filter((k) => k in LV.indice.files);
+    if (!sorgenti.length) throw new Error(`${stem}.eml non trovata nella root del rilascio`);
+    await preflightMosse(sorgenti, `${dir}/inviati`, []);
+    const coppie = sorgenti.map((k) => [k, `${dir}/inviati/${k.split('/').at(-1)}`]);
+    await spostaConRollback(coppie);
+    return { spostati: coppie.map(([, d]) => d) };
+  }
+  async function aggiornaFm(rel, updates) { const f = LV.indice.files[rel]; if (!f || f.text === null) throw new Error(`file non in indice: ${rel}`); await scriviFile(rel, LV.md.updateFrontmatterKeys(f.text, updates), f.lastModified); }
+  const segnaDefinitivoInviato = (rel) => aggiornaFm(rel, { definitivo_inviato: 'true' });
+  async function registraCollaudo(schedaRel, dataIso, oggiIso) {   // writers.registra_collaudo: solo ISO valido, mai futura
+    if (!LV.cruscotto.isoValida(dataIso)) throw new Error(`data non ISO (AAAA-MM-GG): ${dataIso}`);
+    if (dataIso > oggiIso) throw new Error(`data futura: ${dataIso}`);
+    await aggiornaFm(schedaRel, { data_collaudo_effettiva: dataIso });
+  }
+  async function segnaLettera(schedaRel, fieldBase, stato) {
+    if (stato !== 'in_firma' && stato !== 'protocollata') throw new Error(`stato lettera non valido: ${stato}`);
+    await aggiornaFm(schedaRel, { [`${fieldBase}_${stato}`]: 'true' });
+  }
+  async function chiudiApprovazione(rel, oggiIso) {   // writers.chiudi_approvazione_tacita: data_approvazione = data_scadenza_approvazione; PDF e .msg definitivo al sync del master
+    const fm = LV.md.parseFrontmatter(LV.indice.files[rel]?.text || '');
+    if ((fm.inviato || '').toLowerCase() !== 'true') throw new Error('resoconto non inviato');
+    if ((fm.data_approvazione || '').trim()) throw new Error('approvazione già registrata');
+    const scadenza = (fm.data_scadenza_approvazione || '').trim();
+    if (!scadenza) throw new Error('senza data_scadenza_approvazione');
+    if (!LV.cruscotto.isoValida(scadenza)) throw new Error(`data_scadenza_approvazione non ISO: ${scadenza}`);
+    if (scadenza > oggiIso) throw new Error(`scadenza futura: ${scadenza}`);
+    await aggiornaFm(rel, { data_approvazione: scadenza });
+    return scadenza;
+  }
+  async function ricaricaFile(rel) {
+    const f = LV.indice.files[rel];
+    if (f?.handle) { const file = await f.handle.getFile(); const n = normalizzaTesto(await file.text()); Object.assign(f, { text: n.text, crlf: n.crlf, lastModified: file.lastModified }); }
+    reindicizza();
+  }
+  async function apriCartella() {
+    if (!window.showDirectoryPicker) throw new Error('Questo browser non permette di aprire cartelle (serve Edge o Chrome con File System Access abilitato).');
+    const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+    return apriHandle(h);
+  }
+  async function ricarica() { if (!LV.indice) throw new Error('Apri prima un vault: nessun indice da ricaricare.'); return handleCorrente ? apriHandle(handleCorrente) : apriDaMappa(LV.indice.files); }
+  function rilascioPerCartella(dir) {   // la scheda <dir>/<cartella>.md, anche se codice_rilascio è diverso dalla cartella (rilasci rinominati/confluiti)
+    const rel = `${dir}/${dir.split('/').at(-1)}.md`;
+    for (const anno of LV.indice?.anni || []) { const r = Object.values(LV.indice.piani[anno].rilasci).find((x) => x.rel === rel); if (r) return r; }
+    return null;
+  }
+  function rilascio(codice) { for (const anno of LV.indice?.anni || []) { const r = LV.indice.piani[anno].rilasci[codice]; if (r) return r; } return null; }
+  function annoDefault() { const oggi = new Date().getFullYear(); const anni = LV.indice?.anni || []; return anni.includes(oggi) ? oggi : (anni[0] || oggi); }
+  LV.vault = { ESCLUSE, escluso, normalizzaTesto, costruisciIndice, apriDaMappa, apriHandle, apriCartella, ricarica, rilascio, annoDefault,
+               ConflittoModifica, scriviFile, creaFile, ricaricaFile, reindicizza, inBlocco, spostaFile, eliminaFile, riportaInBozza, rilascioPerCartella,
+               segnaInviato, segnaConvocazioneInviata, segnaDefinitivoInviato, registraCollaudo, segnaLettera, chiudiApprovazione };
+})(window.LV);
+
+/* === 35_cruscotto.js === */
+/* Cruscotto: raccolte di Scadenze, Bozze da inviare, Da collaudare, Da firmare dall'indice in memoria.
+   Traduzione di build_scadenze.collect, build_bozze.collect_*, build_da_collaudare._collect, build_da_firmare._collect,
+   chiudi_approvazione.find_pending, mail_utils.{business_days_after, collaudo_resoconto_pronto, format_tipo_riunione}
+   e della partizione di leviathadm/vault/cruscotto.py. "Oggi" è sempre un parametro ISO. */
+(function (LV) {
+  'use strict';
+  const M = LV.md, MO = LV.modelli;
+  const MESI = ['', 'gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  const LETTERE = [['Trasmissione copia verbale di collaudo', 'trasmissione_verbale', 'protocollo_collaudo'],
+                   ['Richiesta estensione in esercizio', 'estensione_esercizio', 'protocollo_estensione_esercizio']];
+  const ETICHETTE_SCADENZE = { tassative: '🚨 Tassative — convocazione collaudo', scadute: '🔴 Scadute', settimana: '🟡 Questa settimana', prossime: '⚪ Prossime' };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const aIso = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  const daIso = (iso) => new Date(`${iso}T00:00:00Z`);                 // UTC: niente salti di ora legale nei conteggi
+  const oggi = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };   // data locale, mai toISOString
+  const parseDate = (raw) => M.parseData(raw || '');
+  const isoValida = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && parseDate(s) === s;   // date.fromisoformat: solo ISO valido
+  const piuGiorni = (iso, n) => aIso(new Date(daIso(iso).getTime() + n * 86400000));
+  const giorni = (a, b) => Math.round((daIso(b) - daIso(a)) / 86400000);
+  const weekday = (iso) => (daIso(iso).getUTCDay() + 6) % 7;            // lunedì = 0 come Python
+  const weekEnd = (iso) => piuGiorni(iso, 6 - weekday(iso));
+  const deltaLabel = (iso, oggiIso) => { const diff = giorni(oggiIso, iso); return diff < 0 ? `scad. da ${-diff}gg` : diff === 0 ? 'oggi' : diff === 1 ? 'domani' : `tra ${diff}gg`; };
+  const fmtDate = (iso) => `${+iso.slice(8)} ${MESI[+iso.slice(5, 7)]} ${iso.slice(0, 4)}`;
+  const fmtIt = (raw) => { const s = (raw || '').trim(); return isoValida(s) ? `${s.slice(8)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : raw; };
+  function businessDaysAfter(iso, n) { let cur = iso, added = 0; while (added < n) { cur = piuGiorni(cur, 1); if (weekday(cur) < 5) added++; } return cur; }
+  function formatTipoRiunione(tipo) {
+    const t = (tipo || '').trim().toLowerCase();
+    if (t.includes('startup')) return 'Startup';
+    if (t.includes('prima')) return 'Prima Analisi';
+    if (t.includes('analisi')) return 'Analisi';
+    if (t.includes('sal') || t.includes('stato avanzamento')) return 'SAL';
+    if (t.includes('collaudo')) return 'Collaudo';
+    return (tipo || '').trim();
+  }
+  const low = (v) => (v || '').toLowerCase();
+  const files = () => LV.indice.files;
+  const rels = () => Object.keys(files()).sort((a, b) => { const x = a.toLowerCase(), y = b.toLowerCase(); return x < y ? -1 : x > y ? 1 : a < b ? -1 : a > b ? 1 : 0; });   // sorted(Path) su Windows: senza distinguere maiuscole
+  const tronca80 = (s) => { const cp = Array.from(s); return cp.slice(0, 80).join('') + (cp.length > 80 ? '…' : ''); };   // note[:80] conta i code point
+  const lavori = (anno) => `PO ${anno}`;
+  const inLavori = (anno, rel) => rel.startsWith(`${lavori(anno)}/`) && rel.split('/').length >= 3;
+  const cartellaDi = (rel) => rel.split('/')[1];                       // "ADMxxx-xx-xX" (o "ADMxxx (prova)")
+  const inRoot = (anno, rel) => inLavori(anno, rel) && rel.split('/').length === 3 && cartellaDi(rel).startsWith('ADM');   // direttamente in PO <anno>/ADM*/
+  const fmDi = (rel) => M.parseFrontmatter((files()[rel] || {}).text || '');
+  const esiste = (rel) => rel in files();
+  const schedaRel = (anno, codice) => `${lavori(anno)}/${codice}/${codice}.md`;
+
+  function schede(anno) {   // ogni .md direttamente in PO <anno>/ADM*/ senza " - 20" nel nome (build_scadenze: anche note non-scheda, con fm vuoto)
+    return rels().filter((rel) => inRoot(anno, rel) && rel.endsWith('.md') && !MO.nome(rel).includes(' - 20') && files()[rel].text !== null)
+      .map((rel) => { const text = files()[rel].text; const fm = M.parseFrontmatter(text); return { rel, codice: fm.codice_rilascio || MO.stemDi(rel), fm, text }; });
+  }
+  function collaudoResocontoPronto(rel, anno, oggiIso) {
+    const fm = fmDi(rel);
+    if (low(fm.tipo_riunione).trim() !== 'collaudo') return true;
+    const codice = (fm.codice_rilascio || '').trim() || cartellaDi(rel);
+    const s = schedaRel(anno, codice);
+    if (!esiste(s)) return false;
+    const raw = (fmDi(s).data_collaudo_effettiva || '').trim();
+    if (!isoValida(raw)) return false;
+    return raw <= oggiIso;
+  }
+  const DATE_RE = /scadenza:\s*(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})/i;
+  function scadenze(anno, oggiIso) {
+    const entries = [];
+    for (const { fm, codice, text } of schede(anno)) {
+      const descr = fm.descrizione_rilascio || '', stato = fm.stato || '';
+      const storica = stato === 'Rinominato' || stato === 'Concluso';
+      for (const [label, prev, eff] of [['Fine analisi', fm.data_fine_analisi, fm.data_fine_analisi], ['Collaudo', fm.data_collaudo_prevista, fm.data_collaudo_effettiva], ['Rilascio', fm.data_rilascio_prevista, fm.data_rilascio_effettiva]]) {
+        if ((eff || '') || storica) continue;
+        const d = parseDate(prev || '');
+        if (d) entries.push({ codice, descr, tipo: label, data: d, note: '', stato, tassativo: false });
+      }
+      const disp = parseDate(fm.data_disponibilita_collaudo || '');
+      if (disp && !(fm.data_collaudo_effettiva || '').trim()) {
+        const provvisoria = (fm.protocollo_disponibilita_collaudo || '').toUpperCase().includes('DA COMPLETARE');
+        let nota = `TASSATIVO — disponibilità a collaudo del ${fmtDate(disp)}`;
+        if (provvisoria) nota += ' (PROVVISORIA: data SOGEI, protocollo ADM non ancora noto — la scadenza reale potrebbe essere successiva)';
+        entries.push({ codice, descr, tipo: 'Convocazione collaudo', data: piuGiorni(disp, 20), note: nota, stato, tassativo: true });
+      }
+      let inAzioni = false;
+      for (const line of text.split('\n')) {
+        if (line.trim().startsWith('## Azioni')) { inAzioni = true; continue; }
+        if (inAzioni && line.startsWith('## ')) break;
+        if (!inAzioni || !line.startsWith('- [ ]')) continue;
+        const m = DATE_RE.exec(line);
+        if (!m) continue;
+        const d = parseDate(m[1]);
+        if (!d) continue;
+        let note = line.slice(6).replace(/\[\[.*?\]\]/g, '').replace(/—\s*scadenza:.*/i, '').replace(/\s+/g, ' ').replace(/^[ —·]+|[ —·]+$/g, '');
+        note = tronca80(note);
+        entries.push({ codice, descr, tipo: 'Azione', data: d, note, stato, tassativo: false });
+      }
+    }
+    for (const rel of rels()) {   // approvazioni in scadenza: resoconti ovunque sotto ADM*/ (anche inviati/), salvo _archivio e _storico*
+      if (!inLavori(anno, rel) || !cartellaDi(rel).startsWith('ADM') || !rel.endsWith('.md') || !MO.nome(rel).includes(' - 20')) continue;
+      const parti = rel.split('/').slice(2, -1);
+      if (parti.includes('_archivio') || parti.some((p) => p.startsWith('_storico'))) continue;
+      const fm = fmDi(rel);
+      if (!(fm.tipo_riunione || '').trim() || low(fm.salta_definitivo) === 'true' || low(fm.inviato) !== 'true') continue;
+      const scad = (fm.data_scadenza_approvazione || '').trim();
+      if (!scad || (fm.data_approvazione || '').trim()) continue;
+      const d = parseDate(scad);
+      if (!d) continue;
+      entries.push({ codice: fm.codice_rilascio || '', descr: fm.data_riunione || '', tipo: `Appr. ${fm.tipo_riunione || 'riunione'}`, data: d, note: 'scadenza convalida tacita', stato: '', tassativo: false });
+    }
+    const sun = weekEnd(oggiIso);
+    const ordina = (xs) => xs.map((e) => ({ ...e, delta: deltaLabel(e.data, oggiIso), data_fmt: fmtDate(e.data) })).sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+    const resto = entries.filter((e) => !e.tassativo);
+    return { tassative: ordina(entries.filter((e) => e.tassativo)), scadute: ordina(resto.filter((e) => e.data < oggiIso)),
+             settimana: ordina(resto.filter((e) => e.data >= oggiIso && e.data <= sun)), prossime: ordina(resto.filter((e) => e.data > sun)) };
+  }
+  const resocontiRoot = (anno) => rels().filter((rel) => inRoot(anno, rel) && rel.endsWith('.md') && MO.nome(rel).includes(' - 20'));
+  function bozze(anno, oggiIso) {
+    const out = [];
+    for (const rel of resocontiRoot(anno)) {
+      const fm = fmDi(rel);
+      if (!(fm.tipo_riunione || '').trim() || !(fm.data_riunione || '').trim()) continue;   // Verbale, Demo…: non sono resoconti
+      if (!collaudoResocontoPronto(rel, anno, oggiIso)) continue;
+      const md = files()[rel], docx = files()[rel.replace(/\.md$/, '.docx')];
+      out.push({ stem: MO.stemDi(rel), rel, codice: fm.codice_rilascio || cartellaDi(rel), tipo: formatTipoRiunione(fm.tipo_riunione || ''), data: fmtIt(fm.data_riunione || ''),
+                 has_docx: !!docx, has_msg: esiste(rel.replace(/\.md$/, '.msg')),
+                 docx_superato: !!docx && typeof docx.lastModified === 'number' && md.lastModified > docx.lastModified + 1000 });   // sul disco il .docx non ha lastModified (null): mai "superato" qui
+    }
+    return out;
+  }
+  function convocazioni(anno) {
+    return rels().filter((rel) => inRoot(anno, rel) && /Convocazione.*\.eml$/.test(MO.nome(rel)))
+      .map((rel) => {
+        const stem = MO.nome(rel).replace(/\.eml$/, '');
+        const m = /^(\S+) - (\d{8}) Convocazione (\w+)/.exec(stem);
+        if (m) { const g = m[2]; return { stem, rel, codice: m[1], tipo: m[3], data: `${g.slice(6, 8)}/${g.slice(4, 6)}/${g.slice(0, 4)}` }; }
+        return { stem, rel, codice: stem.split(' - ')[0], tipo: '?', data: '' };
+      });
+  }
+  function definitivi(anno) {
+    const out = [];
+    for (const rel of rels()) {
+      const p = rel.split('/');
+      if (!inLavori(anno, rel) || p.length !== 4 || !p[1].startsWith('ADM') || p[2] !== 'inviati' || !rel.endsWith('.md') || !MO.nome(rel).includes(' - 20')) continue;
+      const fm = fmDi(rel);
+      if (!(fm.data_approvazione || '').trim() || low(fm.definitivo_inviato) === 'true') continue;
+      const stem = MO.stemDi(rel), dir = p.slice(0, -1).join('/');
+      const hasMsg = esiste(`${dir}/${stem} - definitivo.msg`), hasPdf = esiste(rel.replace(/\.md$/, '.pdf'));
+      if (!hasMsg && !hasPdf) continue;
+      out.push({ stem, rel, codice: fm.codice_rilascio || p[1], tipo: formatTipoRiunione(fm.tipo_riunione || ''), data: fmtIt(fm.data_riunione || ''), scadenza: fmtIt(fm.data_approvazione || ''), has_msg: hasMsg, has_pdf: hasPdf });
+    }
+    return out;
+  }
+  function cartelleRilascio(anno) {   // build_da_collaudare: cartelle ADM* ordinate, senza "(" nel nome, con la scheda
+    const viste = new Set();
+    for (const rel of rels()) { if (inLavori(anno, rel)) viste.add(cartellaDi(rel)); }
+    return [...viste].sort().filter((d) => d.startsWith('ADM') && !d.includes('(') && esiste(schedaRel(anno, d)));
+  }
+  function daCollaudare(anno) {
+    const out = [];
+    for (const d of cartelleRilascio(anno)) {
+      const s = schedaRel(anno, d), fm = fmDi(s);
+      if (fm.stato === 'Rinominato' || fm.stato === 'Concluso') continue;
+      const previsto = (fm.data_collaudo_prevista || '').trim(), effettiva = (fm.data_collaudo_effettiva || '').trim(), disp = (fm.data_disponibilita_collaudo || '').trim();
+      if (!previsto || effettiva || !disp) continue;
+      const dp = parseDate(previsto);
+      out.push({ codice: fm.codice_rilascio || d, previsto: dp ? fmtIt(dp) : previsto, scheda: s });
+    }
+    return out;
+  }
+  function daFirmare(anno, oggiIso) {
+    const da_mandare = [], in_firma = [];
+    for (const [label, fieldBase, protocolloField] of LETTERE) {
+      for (const rel of rels().filter((r) => inRoot(anno, r) && MO.nome(r).toLowerCase().endsWith(`${label}.docx`.toLowerCase()))) {   // glob di Windows: senza distinguere maiuscole
+        const codice = cartellaDi(rel), s = schedaRel(anno, codice), fm = esiste(s) ? fmDi(s) : {};
+        if (low(fm[`${fieldBase}_protocollata`]) === 'true') continue;
+        const prot = (fm[protocolloField] || '').trim();
+        if (prot && !prot.toUpperCase().includes('DA COMPLETARE')) continue;
+        const eff = parseDate(fm.data_collaudo_effettiva || '');
+        if (!eff || eff > oggiIso) continue;
+        const pref = `${lavori(anno)}/${codice}/da mandare in firma/${label}/`;
+        const cartelle = Object.keys(LV.indice.dirs || {});
+        const item = { codice, label, scheda: s, field_base: fieldBase, cartella_pronta: rels().some((r) => r.startsWith(pref)) || cartelle.some((d) => d.startsWith(pref)) };   // any(iterdir()): anche una sola sottocartella vuota
+        (low(fm[`${fieldBase}_in_firma`]) === 'true' ? in_firma : da_mandare).push(item);
+      }
+    }
+    return { da_mandare, in_firma };
+  }
+  function approvazioniScadute(anno, oggiIso) {
+    const out = [];
+    for (const rel of rels()) {
+      const p = rel.split('/');
+      if (!inLavori(anno, rel) || p.length !== 4 || p[2] !== 'inviati' || !rel.endsWith('.md') || p.includes('_archivio')) continue;
+      const fm = fmDi(rel);
+      if (low(fm.inviato) !== 'true' || low(fm.salta_definitivo) === 'true') continue;
+      const scad = (fm.data_scadenza_approvazione || '').trim();
+      if (!scad || (fm.data_approvazione || '').trim()) continue;
+      if (!isoValida(scad) || scad > oggiIso) continue;
+      out.push({ rel, stem: MO.stemDi(rel), codice: fm.codice_rilascio || p[1], tipo: fm.tipo_riunione || '', data: fm.data_riunione || '', scadenza: scad });
+    }
+    return out;
+  }
+  // ---- Stato invii (build_stato_invii.collect / _cell_text) ----
+  const STATO_RE = /^(ADM\d{3}-\d{2}-[0-9A-Za-z]{2}) - (\d{8}) Resoconto (.+)$/;
+  const ESCLUSI_STEM = ['piano di test', 'documentazione visiva', 'verbale di collaudo', '-rev'];
+  const PREFISSO = ['Startup', 'Prima Analisi', 'Seconda Analisi'], SUFFISSO = ['Collaudo'];
+  function normalizzaFase(tipoRaw) {
+    const t = (tipoRaw || '').trim(), tl = t.toLowerCase();
+    if (tl.includes('startup')) return 'Startup';
+    if (tl.includes('seconda') && tl.includes('analisi')) return 'Seconda Analisi';
+    if (tl.includes('prima') && tl.includes('analisi')) return 'Prima Analisi';
+    if (tl === 'analisi') return 'Analisi';
+    const m = /sal\s*#?\s*(\d+)/.exec(tl);
+    if (m) return `SAL #${m[1]}`;
+    if (tl.includes('collaudo')) return 'Collaudo';
+    return t;
+  }
+  function cellaStatoInvio(entries) {
+    if (!entries || !entries.length) return '—';
+    return entries.map((e) => {
+      const p = e.inviato ? '✅' : '❌';
+      const d = e.salta ? '➖' : e.definitivo ? '✅' : (e.inviato && e.ha_scadenza) ? '❌' : '—';
+      return `P${p} D${d}`;
+    }).join(' / ');
+  }
+  function statoInvii(anno) {
+    const matrix = {}, fasiViste = new Set();
+    for (const d of cartelleRilascio(anno)) {
+      const rinominato = low(fmDi(schedaRel(anno, d)).stato).trim() === 'rinominato';
+      const dir = `${lavori(anno)}/${d}`;
+      const candidati = [...rels().filter((r) => r.startsWith(`${dir}/inviati/`) && r.split('/').length === 4 && r.endsWith('.md')),
+                         ...rels().filter((r) => r.startsWith(`${dir}/`) && r.split('/').length === 3 && r.endsWith('.md'))];   // inviati/*.md poi *.md, come _find_resoconto_files
+      for (const rel of candidati) {
+        const stem = MO.stemDi(rel), m = STATO_RE.exec(stem);
+        if (!m || ESCLUSI_STEM.some((h) => stem.toLowerCase().includes(h))) continue;
+        const fase = normalizzaFase(m[3]);
+        fasiViste.add(fase);
+        const fm = fmDi(rel);
+        const entry = { data: m[2], inviato: low(fm.inviato) === 'true', definitivo: low(fm.definitivo_inviato) === 'true', salta: low(fm.salta_definitivo) === 'true',
+                        ha_scadenza: !!(fm.data_scadenza_approvazione || '').trim(), rinominato, rel };
+        entry.testo = cellaStatoInvio([entry]);
+        ((matrix[d] ||= {})[fase] ||= []).push(entry);
+      }
+    }
+    const viste = [...fasiViste];
+    const sal = viste.filter((f) => f.startsWith('SAL #')).sort((a, b) => parseInt(a.slice(5), 10) - parseInt(b.slice(5), 10));
+    const altre = viste.filter((f) => !PREFISSO.includes(f) && !SUFFISSO.includes(f) && !sal.includes(f)).sort();
+    const colonne = [...PREFISSO.filter((f) => fasiViste.has(f)), ...sal, ...altre, ...SUFFISSO.filter((f) => fasiViste.has(f))];
+    return { matrix, colonne };
+  }
+  LV.cruscotto = { MESI, LETTERE, ETICHETTE_SCADENZE, oggi, parseDate, isoValida, weekEnd, deltaLabel, fmtDate, fmtIt, businessDaysAfter, formatTipoRiunione, schede, tronca80, weekday,
+                   collaudoResocontoPronto, scadenze, bozze, convocazioni, definitivi, daCollaudare, daFirmare, approvazioniScadute, normalizzaFase, cellaStatoInvio, statoInvii };
+})(window.LV);
+
+/* === 40_render.js === */
+/* Mini-renderer markdown: solo ciò che il vault usa (titoli, paragrafi, elenchi e checkbox, numerati,
+   citazioni, hr, tabelle, codice recintato; inline: grassetto, codice, wikilink, link). HTML escapato. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc;
+  LV.render = LV.render || {};
+  LV.render.link = (target) => {   // index.risolvi: id esatto, altrimenti titolo/stem normalizzati (mappa costruita con l'indice)
+    const t = String(target).split('#')[0].trim();
+    const idx = LV.indice;
+    const id = idx && (idx.note[t] ? t : idx.perNome[LV.md.normalizza(t)]);
+    return `#/nota/${encodeURIComponent(id || t)}`;
+  };
+  const WIKI = /!?\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g;
+  function inlineBase(t) {     // tratto senza wikilink: escape, poi codice, link markdown, grassetto
+    let s = esc(t);
+    s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
+    s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return s;
+  }
+  function inline(t) {
+    // i wikilink si riconoscono sul testo grezzo: apostrofi e & nei nomi (es. [[Tramontana Ali' Biagio]]) non devono
+    // passare dall'escape prima della regex (&#39; contiene il # che chiude il target)
+    const s = String(t ?? '');
+    let out = '', pos = 0;
+    for (const m of s.matchAll(WIKI)) {
+      out += inlineBase(s.slice(pos, m.index));
+      const target = m[1].trim(), alias = (m[2] || '').trim();
+      out += `<a class="wiki" href="${LV.render.link(target)}">${esc(alias || target)}</a>`;   // href da encodeURIComponent: niente ", <, >
+      pos = m.index + m[0].length;
+    }
+    return out + inlineBase(s.slice(pos));
+  }
+  const SEP = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$/;
+  const celle = (riga) => riga.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  const ALTRO = /^(#{1,6} |```|\||>|\s*[-*+] |\s*\d+[.)] )/;
+  const HR = /^(-{3,}|\*{3,})\s*$/;
+  function markdown(testo) {
+    const righe = (testo || '').replace(/\r\n/g, '\n').split('\n');
+    const out = [];
+    let i = 0;
+    const blocco = (cond, wrap) => { const acc = []; while (i < righe.length && cond(righe[i])) acc.push(righe[i++]); return wrap(acc); };
+    while (i < righe.length) {
+      const r = righe[i];
+      if (!r.trim()) { i++; continue; }
+      let m;
+      if (r.startsWith('```')) { i++; const acc = []; while (i < righe.length && !righe[i].startsWith('```')) acc.push(righe[i++]); i++; out.push(`<pre>${esc(acc.join('\n'))}</pre>`); continue; }
+      if ((m = /^(#{1,6}) +(.+?)\s*$/.exec(r))) { out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); i++; continue; }
+      if (HR.test(r)) { out.push('<hr>'); i++; continue; }
+      if (r.trim().startsWith('|') && i + 1 < righe.length && SEP.test(righe[i + 1].trim())) {
+        const head = celle(r); i += 2; const body = [];
+        while (i < righe.length && righe[i].trim().startsWith('|')) body.push(celle(righe[i++]));
+        out.push(`<table class="lv"><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map((rw) => `<tr>${rw.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+        continue;
+      }
+      if (/^\s*[-*+] /.test(r)) { out.push(blocco((x) => /^\s*[-*+] /.test(x), (acc) => `<ul>${acc.map((x) => {
+        const t = x.replace(/^\s*[-*+] /, ''); const c = /^\[( |x|X)\] (.*)$/.exec(t);
+        return c ? `<li class="task"><input type="checkbox" disabled${c[1] === ' ' ? '' : ' checked'}> ${inline(c[2])}</li>` : `<li>${inline(t)}</li>`; }).join('')}</ul>`)); continue; }
+      if (/^\s*\d+[.)] /.test(r)) { out.push(blocco((x) => /^\s*\d+[.)] /.test(x), (acc) => `<ol>${acc.map((x) => `<li>${inline(x.replace(/^\s*\d+[.)] /, ''))}</li>`).join('')}</ol>`)); continue; }
+      if (r.startsWith('>')) { out.push(blocco((x) => x.startsWith('>'), (acc) => `<blockquote>${acc.map((x) => inline(x.replace(/^>\s?/, ''))).join('<br>')}</blockquote>`)); continue; }
+      const testoLibero = (x) => x.trim() && !ALTRO.test(x) && !HR.test(x);
+      if (!testoLibero(r)) { out.push(`<p>${inline(r)}</p>`); i++; continue; }   // riga orfana (es. | senza tabella): paragrafo, mai ciclo infinito
+      out.push(blocco(testoLibero, (acc) => `<p>${acc.map(inline).join('<br>')}</p>`));   // a capo nel paragrafo = <br> (come Obsidian)
+    }
+    return out.join('\n');
+  }
+  LV.render.inline = inline;
+  LV.render.markdown = markdown;
+})(window.LV);
+
+/* === 50_ui_shell.js === */
+/* Shell: header, drawer, router su location.hash, toast, tema, schermata iniziale. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc;
+  const ui = LV.ui = LV.ui || {};
+  ui.STATI_ORDINE = ['Da Avviare', 'Bozza', 'Startup', 'Analisi', 'In corso', 'In Verifica', 'Collaudo', 'Concluso', 'Rinominato'];
+  ui.rangoStato = (s) => { const i = ui.STATI_ORDINE.indexOf(s); return i < 0 ? ui.STATI_ORDINE.length : i; };
+  ui.COLORI_STATO = { 'Da Avviare': '#64748b', Bozza: '#64748b', Startup: '#4338ca', 'In corso': '#1e40af', Analisi: '#1e40af',
+                      'In Verifica': '#c2410c', Collaudo: '#c2410c', Concluso: '#15803d', Rinominato: '#94a3b8' };
+  ui.badgeStato = (s) => `<span class="badge" style="color:${ui.COLORI_STATO[s] || '#64748b'}">${esc(s || '—')}</span>`;
+  ui.fmtData = (iso) => { const d = LV.md.parseData(iso); return d ? `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '—'; };
+  ui.rotte = ui.rotte || {};
+  ui.anno = null;
+
+  const VOCI = [['Rilasci', '#/'], ['Scadenze', '#/scadenze'], ['Bozze da inviare', '#/bozze'], ['Da collaudare', '#/da-collaudare'], ['Da firmare', '#/da-firmare'], ['Stato invii', '#/stato-invii'],
+                ['Anagrafica', '#/anagrafica'], ['Nuovo punto di piano', '#/nuovo'], ['Manuale', '#/manuale']];
+  const storage = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* policy che blocca lo storage: il tema vale per la sessione */ } } };
+  function tema(scuro) {
+    if (scuro === undefined) scuro = (storage.get('lv.tema') || 'dark') === 'dark';
+    document.documentElement.dataset.theme = scuro ? 'dark' : 'light';
+    storage.set('lv.tema', scuro ? 'dark' : 'light');
+  }
+  ui.tema = tema;
+  ui.toast = (msg, tipo = 'info', persistente = false) => {
+    const box = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = `toast ${tipo}`;
+    el.innerHTML = `${esc(msg)} ${persistente ? '<button class="chiudi" aria-label="chiudi">×</button>' : ''}`;
+    box.appendChild(el);
+    const via = () => el.remove();
+    if (persistente) el.querySelector('.chiudi').onclick = via; else setTimeout(via, 5000);
+  };
+  function shell() {
+    document.getElementById('app').innerHTML = `
+      <header class="lv-header"><button id="menu" aria-label="menu">☰</button><b>LeviathADM</b>
+        <select id="piano-sel" title="Piano operativo" hidden></select><span id="titolo" class="muted"></span><span style="flex:1"></span>
+        <span id="radice" class="muted"></span>
+        <button id="ricarica" title="Ricarica indice">⟳</button><button id="tema" title="Tema chiaro/scuro">◐</button></header>
+      <div class="lv-corpo"><nav id="drawer" class="lv-drawer">${VOCI.map(([n, h]) => `<a href="${h}">${esc(n)}</a>`).join('')}</nav>
+        <main id="main"></main></div><div id="toasts"></div>`;
+    document.getElementById('menu').onclick = () => document.getElementById('drawer').classList.toggle('chiuso');
+    document.getElementById('tema').onclick = () => tema(document.documentElement.dataset.theme !== 'dark');
+    document.getElementById('ricarica').onclick = () => LV.vault.ricarica().then(() => ui.toast('Indice ricaricato.')).catch((e) => ui.toast(e.message, 'errore', true));
+    document.getElementById('piano-sel').onchange = (e) => { ui.anno = +e.target.value; naviga(); };
+  }
+  function schermataIniziale(errore) {
+    const main = document.getElementById('main');
+    const ok = !!window.showDirectoryPicker;
+    const avvisoBrowser = 'Questo browser non permette di aprire cartelle: usa Edge o Chrome (File System Access). '
+      + 'Se usi già Edge/Chrome, l\'accesso ai file potrebbe essere bloccato da una policy aziendale.';
+    main.innerHTML = `<div class="card" style="max-width:640px;margin:40px auto"><h2>Apri il vault</h2>
+      ${errore ? `<p class="errore">${esc(errore)}</p>` : ''}
+      ${ok ? '' : `<p class="errore">${avvisoBrowser}</p>`}
+      <p class="muted">Scegli la cartella del vault (quella che contiene <code>PO 2026/</code>, <code>Anagrafica/</code>). Il browser chiede il permesso a ogni apertura: nulla resta memorizzato.</p>
+      <p><button id="apri" class="primario" ${ok ? '' : 'disabled'}>Apri cartella…</button></p>
+      <p class="muted"><a href="#/manuale">Manuale</a> — come funzionano le due versioni di LeviathADM.</p></div>`;
+    main.querySelector('#apri').onclick = () => LV.vault.apriCartella().catch((e) => { if (e.name !== 'AbortError') schermataIniziale(e.message); });   // picker annullato: nessun errore
+  }
+  function naviga() {
+    document.querySelectorAll('dialog[open]').forEach((d) => d.close());   // un dialogo non deve sopravvivere al cambio di pagina
+    const main = document.getElementById('main');
+    if (location.hash.replace(/^#\/?/, '').split('/')[0] === 'manuale') {   // leggibile anche prima di aprire un vault
+      ui.rotte.manuale(main);
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (!LV.indice) return schermataIniziale();
+    const sel = document.getElementById('piano-sel');
+    const anni = LV.indice.anni || [];
+    sel.hidden = !anni.length;
+    sel.innerHTML = anni.map((a) => `<option value="${a}" ${a === ui.anno ? 'selected' : ''}>${a}</option>`).join('');
+    document.getElementById('radice').textContent = LV.radice ? LV.radice.nome : 'vault in memoria';
+    try {
+      const segs = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
+      const fn = ui.rotte[segs[0]] || ui.rotte[''];
+      main.innerHTML = '';
+      fn(main, ...segs.slice(1));
+    } catch (e) {   // hash malformato o pagina rotta: mai una pagina bianca
+      main.innerHTML = `<p class="errore">Errore nella pagina: ${esc(e.message)}</p><p><a href="#/">Torna ai rilasci</a></p>`;
+    }
+    window.scrollTo(0, 0);
+  }
+  ui.naviga = (hash) => { if (hash !== undefined) location.hash = hash; else naviga(); };
+  ui.titolo = (t) => { document.getElementById('titolo').textContent = t || ''; };
+  ui.avvia = () => {
+    tema();
+    shell();
+    LV.on('indice', () => { ui.anno = LV.vault.annoDefault(); naviga(); });
+    LV.on('errore-vault', (msg) => { LV.indice = null; schermataIniziale(msg); });
+    LV.on('lettura', (e) => {
+      if (e.stato === 'inizio') { document.getElementById('main').innerHTML = `<p class="card" style="max-width:640px;margin:40px auto">Lettura del vault "${esc(e.nome)}"…</p>`; }
+      else if (e.saltati.length) ui.toast(`${e.saltati.length} file non leggibili saltati: ${e.saltati.slice(0, 3).join('; ')}${e.saltati.length > 3 ? '…' : ''}`, 'avviso', true);
+    });
+    window.addEventListener('hashchange', naviga);
+    naviga();
+  };
+  document.addEventListener('DOMContentLoaded', ui.avvia);
+})(window.LV);
+
+/* === 55_ui_widgets.js === */
+/* Widget dei moduli: campo data con picker nativo, campo persona con suggerimenti dall'Anagrafica e
+   "nuova persona" al volo, dialogo Nuova persona. Tutto HTML nativo (<datalist>, <dialog>, <input type=date>). */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui;
+  ui.persone = () => Object.values(LV.indice.note).filter((n) => n.tipo === 'persona')
+    .map((n) => ({ id: n.id, nome: n.titolo, ...Object.fromEntries(['organizzazione', 'direzione', 'ufficio', 'email', 'ruolo_tipico'].map((k) => [k, n.frontmatter[k] || ''])) }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'it', { sensitivity: 'base' }));
+  ui.datalistPersone = () => `<datalist id="lv-persone">${ui.persone().map((p) => `<option value="${esc(p.nome)}">`).join('')}</datalist>`;
+  ui.persona = (nome) => { const k = LV.md.normalizza((nome || '').trim()); return k ? ui.persone().find((p) => LV.md.normalizza(p.nome) === k) || null : null; };   // Anagrafica senza distinguere maiuscole/accenti (NTFS)
+  ui.notaPersona = (nome) => { const p = ui.persona(nome); return p ? LV.indice.note[p.id] : null; };
+  const GIORNI_WEEKEND = { 5: 'sabato', 6: 'domenica' };
+  ui.giornoWeekend = (valore) => { const iso = LV.md.parseData(valore || ''); return iso ? GIORNI_WEEKEND[LV.cruscotto.weekday(iso)] || null : null; };
+  const toIt = (iso) => (iso ? `${iso.slice(8)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '');
+  ui.campoData = (nome, label, value = '', { weekend = false } = {}) => `<label class="campo campo-data" ${weekend ? 'data-weekend="1"' : ''}><span class="muted">${esc(label)}</span>
+    <span class="riga"><input type="text" name="${esc(nome)}" value="${esc(value)}" placeholder="AAAA-MM-GG"><input type="date" class="picker" title="Calendario"></span></label>`;
+  ui.campoDataIt = (nome, label, value = '', { weekend = false } = {}) => `<label class="campo campo-data" ${weekend ? 'data-weekend="1"' : ''}><span class="muted">${esc(label)}</span><span class="riga"><input type="text" name="${esc(nome)}" value="${esc(value)}" placeholder="GG/MM/AAAA"><input type="date" class="picker picker-it" title="Calendario"></span></label>`;
+  ui.campoPersona = (nome, label, value = '') => `<label class="campo"><span class="muted">${esc(label)}</span>
+    <span class="riga"><input type="text" name="${esc(nome)}" value="${esc(value)}" list="lv-persone" autocomplete="off"><button type="button" class="nuova-persona" data-campo="${esc(nome)}" title="Nuova persona in Anagrafica">+</button></span></label>`;
+  ui.collegaCampi = (form) => {
+    form.querySelectorAll('.campo-data .picker').forEach((p) => {
+      const t = p.parentElement.querySelector('input[type=text]');
+      const it = p.classList.contains('picker-it');
+      const iso = LV.md.parseData(t.value);
+      if (iso) p.value = iso;   // calendario precompilato col valore del campo
+      p.onchange = () => { t.value = it ? toIt(p.value) : p.value; t.dispatchEvent(new Event('input', { bubbles: true })); t.dispatchEvent(new Event('change', { bubbles: true })); };
+      t.addEventListener('input', () => { const v = LV.md.parseData(t.value); if (v) p.value = v; });
+    });
+    form.querySelectorAll('.campo-data[data-weekend] input[type=text]').forEach((t) => {   // date di riunione: conferma se sabato/domenica (campo_data(conferma_weekend=True))
+      t.addEventListener('change', async () => {
+        const g = ui.giornoWeekend(t.value);
+        if (!g || t.dataset.confermando) return;   // un solo dialogo per campo
+        t.dataset.confermando = '1';
+        const ok = await ui.conferma(`La data cade di ${g}. Le riunioni si tengono di norma nei giorni lavorativi.`, 'Confermo la data', { annulla: 'Cambia data' });
+        delete t.dataset.confermando;
+        if (!ok) { t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+    });
+    form.querySelectorAll('button.nuova-persona').forEach((b) => {
+      b.onclick = () => ui.dialogoNuovaPersona((nome) => {
+        const t = form.querySelector(`input[name="${b.dataset.campo}"]`);
+        t.value = nome;
+        t.dispatchEvent(new Event('input', { bubbles: true }));
+        const dl = document.getElementById('lv-persone');
+        if (dl) dl.insertAdjacentHTML('beforeend', `<option value="${esc(nome)}">`);
+      });
+    });
+  };
+  ui.conferma = (testo, etichetta, { titolo = '', annulla = 'Annulla' } = {}) => new Promise((fine) => {   // <dialog> di conferma; Esc/chiusura = false
+    const d = document.createElement('dialog');
+    d.className = 'lv-dialog';
+    d.innerHTML = `<form method="dialog">${titolo ? `<h3>${esc(titolo)}</h3>` : ''}<p class="${titolo ? 'muted' : ''}">${esc(testo)}</p><p class="riga"><button type="button" class="primario conferma">${esc(etichetta)}</button><button type="button" class="annulla">${esc(annulla)}</button></p></form>`;
+    document.body.appendChild(d);
+    let esito = false;
+    d.addEventListener('close', () => { d.remove(); fine(esito); });
+    d.querySelector('.conferma').onclick = () => { esito = true; d.close(); };
+    d.querySelector('.annulla').onclick = () => d.close();
+    d.showModal();
+  });
+  ui.conBottone = async (btn, fn) => {   // pulsante disabilitato durante l'await: niente doppi clic
+    if (btn) btn.disabled = true;
+    try { return await fn(); } finally { if (btn) btn.disabled = false; }
+  };
+  ui.esegui = async (fn, ok, btn = null) => {   // _esegui di bozze.py: errore in toast persistente, poi ridisegno della pagina
+    let esito;
+    try { esito = await ui.conBottone(btn, fn); }
+    catch (e) {
+      const msg = e?.message ?? String(e);
+      if (e?.parziale) ui.toast(`Operazione interrotta, verifica i file del rilascio: ${msg}`, 'errore', true);
+      else if (e instanceof LV.vault.ConflittoModifica) ui.toast(`${msg} — ricarica l'indice (⟳) e riprova.`, 'errore', true);
+      else ui.toast(`Operazione non eseguita: ${msg}`, 'errore', true);
+      return;
+    }
+    ui.toast(ok, 'ok');
+    for (const a of esito?.avvisi || []) ui.toast(a, 'avviso', true);
+    ui.naviga();
+  };
+  ui.pulsanteRicarica = (form, rel, dopo) => {   // conflitto: rilegge il file senza svuotare il modulo (spec §3.3)
+    const box = form.querySelector('.azioni-conflitto');
+    if (!box) return;
+    box.innerHTML = '<button type="button" class="ricarica">Ricarica il file (il modulo resta compilato)</button>';
+    box.querySelector('.ricarica').onclick = async () => {
+      try { await LV.vault.ricaricaFile(rel); } catch (e) { return ui.toast(e.message, 'errore', true); }
+      dopo();
+      box.innerHTML = '';
+      ui.toast('File ricaricato: risalva per applicare le tue modifiche.');
+    };
+  };
+  ui.dialogoNuovaPersona = (onCreata) => new Promise((fine) => {
+    const d = document.createElement('dialog');
+    d.className = 'lv-dialog';
+    d.innerHTML = `<form method="dialog"><h3>Nuova persona</h3>
+      <label class="campo"><span class="muted">Nome Cognome</span><input name="nome" required autofocus></label>
+      <label class="campo"><span class="muted">Organizzazione</span><select name="organizzazione"><option>ADM</option><option>SOGEI</option><option>Altro</option></select></label>
+      <label class="campo"><span class="muted">Direzione (sigla, es. DOTD)</span><input name="direzione"></label>
+      <label class="campo"><span class="muted">Ufficio</span><input name="ufficio"></label>
+      <label class="campo"><span class="muted">Email</span><input name="email" type="email"></label>
+      <label class="campo"><span class="muted">Ruolo tipico (PM, RA, RP, RB, referente…)</span><input name="ruolo_tipico"></label>
+      <p class="errore" hidden></p>
+      <p class="riga"><button type="button" class="primario crea">Crea</button><button type="button" class="annulla">Annulla</button></p></form>`;
+    document.body.appendChild(d);
+    const err = d.querySelector('.errore');
+    d.addEventListener('close', () => { d.remove(); fine(); });   // anche con Esc
+    const chiudi = () => d.close();
+    d.querySelector('.annulla').onclick = chiudi;
+    d.querySelector('.crea').onclick = async () => {
+      const v = Object.fromEntries(Array.from(new FormData(d.querySelector('form')).entries()).map(([k, x]) => [k, String(x).trim()]));
+      try {
+        const { rel, text } = LV.scrittura.creaPersonaTesto(v.nome, v);
+        await LV.vault.creaFile(rel, text);
+        const nome = rel.split('/').at(-1).replace(/\.md$/, '');
+        ui.toast(`Creata ${nome}.md.`, 'ok');
+        chiudi();
+        if (onCreata) onCreata(nome);
+      } catch (e) { err.hidden = false; err.textContent = e.message; }
+    };
+    d.showModal();
+  });
+})(window.LV);
+
+/* === 60_ui_rilasci.js === */
+/* Tabella dei rilasci del piano corrente: ordinamento per colonna (stato per ciclo di vita), filtro testo, filtro stati. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui;
+  const COL = [['n', '#'], ['codice', 'Codice'], ['descrizione', 'Rilascio'], ['stato', 'Stato'], ['pm', 'PM'], ['collaudo', 'Collaudo prev./eff.'], ['prossima', 'Prossima riunione']];
+  const LARGH = { n: 5, codice: 17, descrizione: 25, stato: 9, pm: 13, collaudo: 15, prossima: 16 };
+  let ordine = { col: 'codice', asc: true }, filtroTesto = '', filtroStati = new Set();
+  const righeDi = (piano) => Object.values(piano.rilasci).sort((a, b) => a.codice.localeCompare(b.codice)).map((r, i) => ({
+    n: i + 1, codice: r.codice, descrizione: r.descrizione_rilascio, stato: r.stato, stato_ord: ui.rangoStato(r.stato), pm: r.frontmatter.pm || '',
+    collaudo: `${ui.fmtData(r.frontmatter.data_collaudo_prevista)} / ${ui.fmtData(r.frontmatter.data_collaudo_effettiva)}`,
+    collaudo_ord: LV.md.parseData(r.frontmatter.data_collaudo_prevista) || '', prossima: r.prossima_riunione, attivo: r.attivo }));
+  function ordina(righe) {
+    const { col, asc } = ordine;
+    const k = (r) => col === 'stato' ? r.stato_ord : col === 'collaudo' ? r.collaudo_ord : col === 'n' ? r.n : String(r[col]).toLowerCase();
+    return [...righe].sort((a, b) => { const x = k(a), y = k(b); return (x < y ? -1 : x > y ? 1 : 0) * (asc ? 1 : -1); });
+  }
+  function filtra(righe) {
+    const t = filtroTesto.trim().toLowerCase();
+    return righe.filter((r) => (!filtroStati.size || filtroStati.has(r.stato)) && (!t || COL.map(([c]) => String(r[c])).join(' ').toLowerCase().includes(t)));   // solo le colonne visibili
+  }
+  ui.rotte[''] = function (main) {
+    const piano = LV.indice.piani[ui.anno];
+    ui.titolo('Rilasci');
+    if (!piano) { main.innerHTML = '<p class="muted">Nessun piano trovato.</p>'; return; }
+    const righe = righeDi(piano);
+    const stati = [...new Set(righe.map((r) => r.stato))].sort((a, b) => ui.rangoStato(a) - ui.rangoStato(b));
+    filtroStati = new Set([...filtroStati].filter((s) => stati.includes(s)));   // niente filtri orfani dopo Ricarica
+    const attivi = righe.filter((r) => r.attivo).length;
+    const etichettaStati = () => `Stato${filtroStati.size ? ` (${filtroStati.size})` : ''}`;
+    main.innerHTML = `<div class="barra"><span class="muted">${attivi} attivi · ${righe.length - attivi} storici</span><span style="flex:1"></span>
+        <details id="filtro-stati"><summary>${etichettaStati()}</summary><div class="menu">${stati.map((s) => `<label><input type="checkbox" value="${esc(s)}" ${filtroStati.has(s) ? 'checked' : ''}> ${esc(s)}</label>`).join('')}</div></details>
+        <input id="filtro-testo" placeholder="Filtra" value="${esc(filtroTesto)}"></div>
+      <table class="lv grande"><colgroup>${COL.map(([c]) => `<col style="width:${LARGH[c]}%">`).join('')}</colgroup>
+        <thead><tr>${COL.map(([c, l]) => `<th data-col="${c}" class="${ordine.col === c ? (ordine.asc ? 'asc' : 'desc') : ''}">${esc(l)}</th>`).join('')}</tr></thead><tbody></tbody></table>`;
+    const tbody = main.querySelector('tbody');
+    const render = () => {
+      tbody.innerHTML = ordina(filtra(righe)).map((r) => `<tr data-codice="${esc(r.codice)}" tabindex="0">${COL.map(([c]) =>
+        c === 'stato' ? `<td title="${esc(r.stato)}">${ui.badgeStato(r.stato)}</td>` : `<td class="ellissi" title="${esc(r[c])}">${esc(r[c])}</td>`).join('')}</tr>`).join('');
+    };
+    render();
+    main.querySelectorAll('th').forEach((th) => {
+      th.onclick = () => {
+        const c = th.dataset.col;
+        ordine = { col: c, asc: ordine.col === c ? !ordine.asc : true };
+        main.querySelectorAll('th').forEach((x) => { x.className = ''; });
+        th.className = ordine.asc ? 'asc' : 'desc';
+        render();
+      };
+    });
+    main.querySelector('#filtro-testo').oninput = (e) => { filtroTesto = e.target.value; render(); };
+    main.querySelectorAll('#filtro-stati input').forEach((cb) => {
+      cb.onchange = () => {
+        if (cb.checked) filtroStati.add(cb.value); else filtroStati.delete(cb.value);
+        render();
+        main.querySelector('#filtro-stati summary').textContent = etichettaStati();
+      };
+    });
+    tbody.onclick = (e) => { const tr = e.target.closest('tr'); if (tr) ui.naviga(`#/rilascio/${tr.dataset.codice}`); };
+    tbody.onkeydown = (e) => { const tr = e.target.closest('tr'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ui.naviga(`#/rilascio/${tr.dataset.codice}`); } };   // tastiera
+  };
+})(window.LV);
+
+/* === 65_ui_cruscotto.js === */
+/* Cruscotto: Scadenze (sola lettura), Bozze da inviare, Da collaudare, Da firmare — traduzione delle pagine NiceGUI omonime. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui, K = LV.cruscotto, MO = LV.modelli;
+  const linkRil = (c) => `<a href="#/rilascio/${encodeURIComponent(c)}">${esc(c)}</a>`;
+  const linkRes = (rel, stem) => `<a href="#/resoconto/${encodeURIComponent(MO.notaId(rel))}">${esc(stem)}</a>`;
+  const vuoto = (t) => `<p class="muted"><i>${esc(t)}</i></p>`;
+  const spunta = (ok) => (ok ? '✅' : '❌');
+  const oggi = () => K.oggi();
+  function testoConferma(b) {   // bozze.testo_conferma
+    let t = `Segnare ${b.stem} come inviato? Sposta .md/.docx/.msg in inviati/, imposta inviato: true, scadenza approvazione tacita = +5 giorni lavorativi, ✅ nella riga Riunioni della scheda.`;
+    if (!b.has_msg) t += ' Attenzione: manca il .msg (la mail potrebbe non essere stata inviata da qui).';
+    return t;
+  }
+
+  ui.rotte.scadenze = function (main) {
+    ui.titolo('Scadenze');
+    const s = K.scadenze(ui.anno, oggi());
+    const tabella = (righe) => righe.length ? `<table class="lv"><thead><tr><th>Rilascio</th><th>Tipo</th><th>Data</th><th>Δ</th><th>Note</th></tr></thead><tbody>${righe.map((e) =>
+      `<tr><td>${linkRil(e.codice)}</td><td>${esc(e.tipo)}</td><td>${esc(e.data_fmt)}</td><td>${esc(e.delta)}</td><td>${esc(e.note)}</td></tr>`).join('')}</tbody></table>` : vuoto('Nessuna.');
+    main.innerHTML = `<section class="scadenze">${Object.entries(K.ETICHETTE_SCADENZE).map(([k, l]) => `<div class="card ${k}"><b>${esc(l)}</b>${tabella(s[k])}</div>`).join('')}</section>`;
+  };
+
+  ui.rotte.bozze = function (main) {
+    ui.titolo('Bozze da inviare');
+    const o = oggi(), anno = ui.anno;
+    const scadute = K.approvazioniScadute(anno, o), bozze = K.bozze(anno, o), conv = K.convocazioni(anno), definitivi = K.definitivi(anno);
+    main.innerHTML = `<section class="bozze">
+      ${scadute.length ? `<div class="card approvazioni"><b>Approvazioni tacite scadute</b><p class="muted">Registra data_approvazione; PDF e mail definitiva arrivano al prossimo sync del master.</p>
+        ${scadute.map((a, i) => `<div class="riga lv-riga">${linkRes(a.rel, a.stem)}<span class="muted">${esc(a.tipo)} · ${esc(a.data)} · scaduta il ${esc(a.scadenza)}</span><span style="flex:1"></span><button class="chiudi-approvazione" data-i="${i}">Chiudi approvazione</button></div>`).join('')}</div>` : ''}
+      <div class="card iniziali"><b>Bozze iniziali</b>${bozze.length ? bozze.map((b, i) => `<div class="riga lv-riga">${linkRes(b.rel, b.stem)}<span class="muted mono">${esc(b.codice)} · ${esc(b.tipo)} · ${esc(b.data)} · .docx ${b.has_docx ? (b.docx_superato ? '⚠️ superato' : '✅') : '❌'} · .msg ${spunta(b.has_msg)}</span><span style="flex:1"></span><button class="segna-inviato" data-i="${i}">Segna inviato</button></div>`).join('') : vuoto('Nessuna bozza in attesa.')}</div>
+      <div class="card convocazioni"><b>Convocazioni da inviare</b>${conv.length ? conv.map((c, i) => `<div class="riga lv-riga"><span>${esc(c.stem)}</span><span class="muted">${esc(c.codice)} · Convocazione ${esc(c.tipo)} · ${esc(c.data)}</span><span style="flex:1"></span><button class="segna-inviata" data-i="${i}">Segna inviata</button></div>`).join('') : vuoto('Nessuna convocazione in attesa.')}</div>
+      <div class="card definitivi"><b>Definitivi</b>${definitivi.length ? definitivi.map((x, i) => `<div class="riga lv-riga">${linkRes(x.rel, x.stem)}<span class="muted mono">${esc(x.codice)} · ${esc(x.tipo)} · ${esc(x.data)} · approvato ${esc(x.scadenza)} · .msg ${spunta(x.has_msg)} · .pdf ${spunta(x.has_pdf)}</span><span style="flex:1"></span><button class="segna-definitivo" data-i="${i}">Segna definitivo inviato</button></div>`).join('') : vuoto('Nessun definitivo in attesa.')}</div></section>`;
+    main.querySelectorAll('.chiudi-approvazione').forEach((btn) => { btn.onclick = () => { const a = scadute[+btn.dataset.i]; ui.esegui(() => LV.vault.chiudiApprovazione(a.rel, oggi()), 'Approvazione registrata: PDF e mail definitiva al prossimo sync del master.', btn); }; });
+    main.querySelectorAll('.segna-inviato').forEach((btn) => { btn.onclick = async () => {
+      const b = bozze[+btn.dataset.i];
+      if (!(await ui.conferma(testoConferma(b), 'Segna inviato'))) return;
+      const r = LV.vault.rilascioPerCartella(b.rel.split('/').slice(0, -1).join('/'));   // la scheda della cartella, come archivia_inviati (non per codice né per anno)
+      if (!r) return ui.toast(`Scheda del rilascio ${b.codice} non trovata.`, 'errore', true);
+      ui.esegui(() => LV.vault.segnaInviato(b, r, oggi()), 'Resoconto archiviato in inviati/. Ricorda il sync.', btn); }; });
+    main.querySelectorAll('.segna-inviata').forEach((btn) => { btn.onclick = async () => {
+      const c = conv[+btn.dataset.i];
+      if (!(await ui.conferma(`Segnare ${c.stem} come inviata? Sposta .eml/.ics in inviati/ e la toglie dalla lista.`, 'Segna inviata'))) return;
+      ui.esegui(() => LV.vault.segnaConvocazioneInviata(c.rel), 'Convocazione spostata in inviati/.', btn); }; });
+    main.querySelectorAll('.segna-definitivo').forEach((btn) => { btn.onclick = () => { const x = definitivi[+btn.dataset.i]; ui.esegui(() => LV.vault.segnaDefinitivoInviato(x.rel), 'Definitivo segnato come inviato.', btn); }; });
+  };
+
+  ui.rotte['da-collaudare'] = function (main) {
+    ui.titolo('Da collaudare');
+    const items = K.daCollaudare(ui.anno);
+    main.innerHTML = `<section class="da-collaudare"><p class="muted">Registra la data appena il collaudo si è davvero svolto: il punto esce dalla lista e dalle scadenze tassative; le lettere di chiusura compaiono in Da firmare.</p>
+      <div class="card"><b>Punti da collaudare</b>${items.length ? items.map((it, i) => `<form class="riga lv-riga" data-i="${i}" onsubmit="return false">${linkRil(it.codice)}<span class="muted">previsto ${esc(it.previsto)}</span>${ui.campoData('data_collaudo_effettiva', 'Data collaudo effettiva (AAAA-MM-GG o GG/MM/AAAA)', '', { weekend: true })}<button type="button" class="registra">Registra</button></form>`).join('') : vuoto('Nessuno.')}</div></section>`;
+    main.querySelectorAll('form.lv-riga').forEach((form) => {
+      ui.collegaCampi(form);
+      const btn = form.querySelector('.registra');
+      btn.onclick = () => {
+        const it = items[+form.dataset.i];
+        const iso = LV.md.parseData(form.querySelector('[name=data_collaudo_effettiva]').value || '');
+        if (!iso) return ui.toast('Data non valida: usa AAAA-MM-GG o GG/MM/AAAA.', 'avviso');
+        ui.esegui(() => LV.vault.registraCollaudo(it.scheda, iso, oggi()), `Collaudo del ${iso} registrato.`, btn);
+      };
+    });
+  };
+
+  ui.rotte['da-firmare'] = function (main) {
+    ui.titolo('Da firmare');
+    const { da_mandare, in_firma } = K.daFirmare(ui.anno, oggi());
+    const riga = (it, i, stato) => `<div class="riga lv-riga">${linkRil(it.codice)}<span>${esc(it.label)}</span>${stato === 'in_firma' ? `<span class="muted">${it.cartella_pronta ? 'cartella firma pronta' : 'cartella firma: da preparare al sync'}</span>` : `<a class="muted" href="#/rilascio/${encodeURIComponent(it.codice)}/modifica">Modifica scheda</a>`}<span style="flex:1"></span><button class="segna-lettera" data-i="${i}" data-stato="${stato}">${stato === 'in_firma' ? 'Mandata in firma' : 'Protocollata'}</button></div>`;
+    main.innerHTML = `<section class="da-firmare">
+      <div class="card da-mandare"><b>Da mandare in firma</b><p class="muted">La cartella "da mandare in firma/&lt;Lettera&gt;/" con i PDF per Arcipelago la prepara il sync.</p>${da_mandare.length ? da_mandare.map((it, i) => riga(it, i, 'in_firma')).join('') : vuoto('Nessuna lettera in attesa.')}</div>
+      <div class="card in-firma"><b>In firma — attesa firma e protocollazione</b><p class="muted">Dopo "Protocollata": inserisci numero e data di protocollo e la riga in ## Allegati protocolli nella scheda (link "Modifica scheda").</p>${in_firma.length ? in_firma.map((it, i) => riga(it, i, 'protocollata')).join('') : vuoto('Nessuna lettera in attesa.')}</div></section>`;
+    main.querySelectorAll('.segna-lettera').forEach((btn) => { btn.onclick = () => {
+      const stato = btn.dataset.stato, it = (stato === 'in_firma' ? da_mandare : in_firma)[+btn.dataset.i];
+      ui.esegui(() => LV.vault.segnaLettera(it.scheda, it.field_base, stato), stato === 'in_firma' ? 'Lettera segnata in firma.' : 'Lettera protocollata: compila protocollo e tabella Allegati protocolli nella scheda.', btn); }; });
+  };
+  ui.rotte['stato-invii'] = function (main) {   // stato_invii.py: matrice rilascio × fase, celle P/D con link ai resoconti
+    ui.titolo('Stato invii');
+    const { matrix, colonne } = K.statoInvii(ui.anno);
+    const righe = Object.keys(matrix).sort().map((codice) => {
+      const storico = Object.values(matrix[codice]).some((vs) => vs.some((v) => v.rinominato));
+      const celle = colonne.map((fase) => (matrix[codice][fase] || []).map((v) => `<a class="mono" href="#/resoconto/${encodeURIComponent(MO.notaId(v.rel))}" title="${esc(v.rel.split('/').at(-1))}">${esc(v.testo)}</a>`).join(' / ') || '<span class="muted">—</span>');
+      return `<tr data-codice="${esc(codice)}"><td>${linkRil(codice)}${storico ? ' <span class="muted">(storico)</span>' : ''}</td>${celle.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+    });
+    main.innerHTML = `<section class="stato-invii"><p class="muted">P = provvisorio inviato · D = definitivo inviato (➖ saltato, — non ancora dovuto). Si aggiorna dai flag dei resoconti, nessuna verifica su Outlook.</p>
+      <table class="lv"><thead><tr><th>Rilascio</th>${colonne.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${righe.join('') || `<tr><td colspan="${colonne.length + 1}" class="muted">Nessun resoconto.</td></tr>`}</tbody></table></section>`;
+  };
+})(window.LV);
+
+/* === 70_ui_rilascio.js === */
+/* Dettaglio rilascio in sola lettura (fase 1): scheda, ciclo di vita con pannello del resoconto, azioni,
+   decisioni, protocolli, resoconti non collegati; lettura di resoconto e nota. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui, R = LV.render, M = LV.md, MO = LV.modelli;
+  const RUOLI = [['pm', 'PM'], ['ra', 'RA'], ['rp', 'RP'], ['referente_business', 'Referente business'], ['referente_sogei', 'Referente SOGEI']];
+  const DATE = [['data_fine_analisi', 'Fine analisi'], ['data_disponibilita_collaudo', 'Disponibilità collaudo'], ['data_collaudo_prevista', 'Collaudo previsto'],
+                ['data_collaudo_effettiva', 'Collaudo effettivo'], ['data_rilascio_prevista', 'Rilascio previsto'], ['data_rilascio_effettiva', 'Rilascio effettivo']];
+  const PROT = [['protocollo_analisi', 'Analisi'], ['protocollo_approvazione_analisi', 'Approvazione analisi'], ['protocollo_disponibilita_collaudo', 'Disponibilità a collaudo'],
+                ['protocollo_collaudo', 'Collaudo'], ['protocollo_estensione_esercizio', 'Estensione esercizio']];
+  const COLORE_RES = { bozza: '#64748b', inviato: '#1e40af', definitivo: '#15803d' };
+  const vincoli = (v) => /^(si|sì|true|yes)/i.test((v || '').trim().normalize('NFD').replace(/[̀-ͯ]/g, ''));
+  const campo = (l, v) => `<div class="campo"><div class="muted">${esc(l)}</div><div>${esc(v || '—')}</div></div>`;
+  const sezioniHtml = (testo) => Object.entries(M.splitSections(M.splitBody(testo)))
+    .map(([h, b]) => `<div class="card"><b>${esc(h)}</b><div class="md">${R.markdown(b) || '<i class="muted">(vuota)</i>'}</div></div>`).join('');
+  const badgeRes = (x) => `<span class="badge" style="color:${COLORE_RES[x.stato]}">${x.stato}</span>`;
+  const linkNota = (rel, testo) => `<a href="#/nota/${encodeURIComponent(MO.notaId(rel))}">${esc(testo)}</a>`;
+
+  ui.rotte.rilascio = function (main, codice, azione) {
+    if (azione === 'modifica') return ui.modificaScheda(main, codice);
+    const r = LV.vault.rilascio(codice);
+    ui.titolo(codice);
+    if (!r) { main.innerHTML = `<p>Nessun rilascio con codice "${esc(codice)}". <a href="#/">Torna ai rilasci</a></p>`; return; }
+    const fm = r.frontmatter;
+    const perStem = Object.fromEntries(r.resoconti.map((x) => [x.stem, x]));
+    const collegati = new Set(r.riunioni.map((m) => m.resoconto_link));
+    const altri = r.resoconti.filter((x) => !collegati.has(x.stem));
+    const aperte = r.azioni.filter((a) => !a.chiusa).length;
+    main.innerHTML = `
+      <div class="riga"><h2>${esc(r.descrizione_rilascio)}</h2> ${ui.badgeStato(r.stato)} ${vincoli(fm.vincoli_normativi) ? '<span class="badge" style="color:#b45309">Vincoli normativi</span>' : ''}<span style="flex:1"></span><a class="bottone nuovo-resoconto" href="#/rilascio/${esc(codice)}/nuovo">Nuovo resoconto</a> <a class="bottone" href="#/rilascio/${esc(codice)}/modifica">Modifica scheda</a></div>
+      <div class="muted">${esc(fm.codice_progetto || '')} · ${esc(fm.descrizione_progetto || '')} → ${esc(fm.codice_sottoprogetto || '')} · ${esc(fm.descrizione_sottoprogetto || '')}</div>
+      ${r.problemi.length ? `<p class="errore">${esc(r.problemi.join('; '))}</p>` : ''}
+      <div class="card"><div class="griglia">${RUOLI.map(([k, l]) => campo(l, fm[k])).join('')}</div><hr>
+        <div class="griglia">${DATE.map(([k, l]) => campo(l, ui.fmtData(fm[k]))).join('')}</div>
+        ${r.prossima_riunione ? `<p>📅 Prossima riunione: ${esc(r.prossima_riunione)}</p>` : ''}
+        ${r.team_raw ? `<details><summary>Team</summary><div class="md">${R.markdown(r.team_raw)}</div></details>` : ''}</div>
+      <h3>Ciclo di vita</h3>
+      <div class="card"><div class="stepper">${r.riunioni.map((m, i) => `<button class="step" data-i="${i}">${esc(m.fase)}</button>`).join('')}<button class="step" data-i="nuovo" title="Nuova riunione">+</button></div>
+        <div id="pannello-fase"></div></div>
+      <div class="card"><b>Azioni · ${aperte} aperte, ${r.azioni.length - aperte} chiuse</b>
+        <ul>${r.azioni.map((a) => `<li class="task"><input type="checkbox" disabled ${a.chiusa ? 'checked' : ''}> ${R.inline(a.testo)}${a.scadenza ? ` <span class="muted">(scadenza ${ui.fmtData(a.scadenza)})</span>` : ''}</li>`).join('') || '<li class="muted">nessuna</li>'}</ul></div>
+      <div class="card"><b>Decisioni chiave · ${r.decisioni.length}</b><ul>${r.decisioni.map((d) => `<li>${d.data ? `<b>${ui.fmtData(d.data)}</b> — ` : ''}${esc(d.testo)}</li>`).join('') || '<li class="muted">nessuna</li>'}</ul></div>
+      <div class="card"><b>Protocolli ADM · ${PROT.filter(([k]) => (fm[k] || '').trim()).length}/5</b>
+        <table class="lv"><thead><tr><th>Tipo</th><th>Valore</th></tr></thead><tbody>${PROT.map(([k, l]) => `<tr><td>${esc(l)}</td><td>${esc(fm[k] || '—')}</td></tr>`).join('')}</tbody></table>
+        ${r.protocolli.length ? `<details><summary>Allegati protocolli</summary><table class="lv"><thead><tr><th>Tipo</th><th>Documento</th><th>Prot. ADM n.</th><th>Data</th><th>Rif. SOGEI</th><th>Registro</th></tr></thead><tbody>${r.protocolli.map((p) => `<tr>${[p.tipo, p.documento, p.numero_adm, p.data_adm, p.rif_sogei, p.registro].map((c) => `<td>${R.inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>` : ''}</div>
+      ${altri.length ? `<details class="card"><summary>Altri resoconti · ${altri.length} (non collegati alla tabella Riunioni)</summary><ul>${altri.map((x) => `<li>${badgeRes(x)} <a href="#/resoconto/${encodeURIComponent(MO.notaId(x.rel))}">${esc(x.stem)}</a></li>`).join('')}</ul></details>` : ''}`;
+    const pannello = main.querySelector('#pannello-fase');
+    const mostra = (i) => {
+      main.querySelectorAll('.step').forEach((b) => b.classList.toggle('attivo', b.dataset.i === String(i)));
+      if (i === 'nuovo') { pannello.innerHTML = ''; return ui.formNuovoResoconto(pannello, r, { dopo: (nid) => { ui.apriRiunione = nid.split('~').at(-1); ui.naviga(`#/rilascio/${codice}`); ui.naviga(); } }); }
+      const m = r.riunioni[i];
+      const res = perStem[m.resoconto_link];
+      let h = `<p class="muted">Riunione del ${esc(m.data)} — resoconto ${m.inviato ? 'inviato' : 'da inviare'}${m.trascritto ? ` · trascritto ${esc(m.trascritto)}` : ''}</p>`;
+      if (!m.resoconto_link) { pannello.innerHTML = h + '<p class="muted">Nessun resoconto collegato a questa riunione.</p>'; return; }
+      if (!res) { pannello.innerHTML = h + `<p class="errore">Resoconto non trovato: ${esc(m.resoconto_link)}</p>`; return; }
+      const nid = MO.notaId(res.rel);
+      const doc = LV.res.parseResocontoDoc(res.rel, LV.indice.files[res.rel].text, 0);
+      const bloccato = res.in_inviati || !doc.ha_sezioni;
+      const presenti = [['.docx', res.ha_docx], ['.msg', res.ha_msg], ['.pdf', res.ha_pdf]].filter(([, ok]) => ok).map(([e]) => e).join(' · ');
+      const stato = res.in_inviati ? 'Inviato: sola lettura. Per correggerlo usa "Riporta in bozza" nella pagina del resoconto.' : (bloccato ? 'Aquilone sezioni standard: modificabile solo come nota grezza.' : 'Bozza: campi modificabili.');
+      h += `<p>${badgeRes(res)} <a href="#/resoconto/${encodeURIComponent(nid)}">${esc(res.stem)}</a> <span class="muted mono">${esc(presenti)}</span> ${bloccato ? '🔒' : '🔓'} <span class="muted">${stato}</span></p>`;
+      if (m.fase.startsWith('Collaudo')) h += r.verbali.length ? `<p>${`<a href="#/verbale/${encodeURIComponent(MO.notaId(r.verbali.at(-1)))}">Verbale di Collaudo</a>`}</p>` : '<p class="muted">Verbale assente (nasce dalla convocazione di collaudo)</p>';
+      pannello.innerHTML = h;
+      if (bloccato) pannello.insertAdjacentHTML('beforeend', doc.ha_sezioni ? doc.sezioni.map((s) => `<div class="card"><b>${esc(s.heading)}</b><div class="md">${R.markdown(s.inner) || '<i class="muted">(vuota)</i>'}</div></div>`).join('') : `<div class="card md">${R.markdown(doc.pre + doc.footer)}</div>`);
+      else { const box = document.createElement('div'); pannello.appendChild(box); ui.editorResoconto(box, nid, { dopoSalva: () => mostra(i), annulla: () => mostra(i) }); }
+    };
+    main.querySelectorAll('.step').forEach((b) => { b.onclick = () => mostra(b.dataset.i === 'nuovo' ? 'nuovo' : +b.dataset.i); });
+    const iApri = ui.apriRiunione ? r.riunioni.findIndex((m) => m.resoconto_link === ui.apriRiunione) : -1;   // dopo Crea: la riunione appena creata/completata, non l'ultima
+    ui.apriRiunione = null;
+    mostra(azione === 'nuovo' || !r.riunioni.length ? 'nuovo' : iApri >= 0 ? iApri : r.riunioni.length - 1);
+  };
+
+  ui.rotte.resoconto = function (main, nid, azione) {
+    const n = LV.indice.note[nid];
+    ui.titolo('Resoconto');
+    if (!n) { main.innerHTML = `<p>Nessuna nota con id "${esc(nid)}". <a href="#/">Torna ai rilasci</a></p>`; return; }
+    if (!/ - 20.* Resoconto /.test(MO.stemDi(n.rel))) { main.innerHTML = `<p class="errore">"${esc(n.titolo)}" non è un resoconto.</p><p><a href="#/nota/${encodeURIComponent(nid)}">Apri come nota</a></p>`; return; }
+    if (azione === 'modifica') {
+      main.innerHTML = '';
+      return ui.editorResoconto(main, nid, { dopoSalva: () => ui.naviga(`#/resoconto/${encodeURIComponent(nid)}`), annulla: () => ui.naviga(`#/resoconto/${encodeURIComponent(nid)}`) });
+    }
+    const f = LV.indice.files[n.rel];
+    const doc = LV.res.parseResocontoDoc(n.rel, f.text, f.lastModified);
+    const m = MO.RESOCONTO_RE.exec(MO.stemDi(n.rel));
+    const codice = m ? m[1] : (n.frontmatter.codice_rilascio || '');
+    const inInviati = n.rel.split('/').at(-2) === 'inviati';
+    const dirScheda = n.rel.split('/').slice(0, inInviati ? -2 : -1).join('/');
+    const r = LV.vault.rilascioPerCartella(dirScheda) || (codice ? LV.vault.rilascio(codice) : null);   // anche rilasci rinominati/confluiti
+    const res = (r && r.resoconti.find((x) => x.rel === n.rel)) || { rel: n.rel, stem: MO.stemDi(n.rel), stato: inInviati ? 'inviato' : 'bozza', in_inviati: inInviati };
+    const presenti = ['.docx', '.msg', '.pdf'].filter((e) => n.rel.replace(/\.md$/, e) in LV.indice.files);
+    main.innerHTML = `<div class="riga"><h2>${esc(doc.titolo)}</h2> ${badgeRes(res)}<span style="flex:1"></span>
+        ${inInviati ? '<button class="riporta-bozza">Riporta in bozza</button>' : (doc.ha_sezioni ? `<a class="bottone modifica" href="#/resoconto/${encodeURIComponent(nid)}/modifica">Modifica</a>` : '')}
+        <a class="bottone" href="#/nota/${encodeURIComponent(nid)}">Nota grezza</a></div>
+      <div class="muted">${codice ? `<a href="#/rilascio/${esc(codice)}">${esc(codice)}</a> · ` : ''}${esc(n.frontmatter.tipo_riunione || '')} · ${esc(n.frontmatter.data_riunione || '')} · <span class="mono">${esc(presenti.join(' · ') || 'nessun allegato')}</span>
+        ${doc.is_collaudo && r && r.verbali.length ? ` · ${`<a href="#/verbale/${encodeURIComponent(MO.notaId(r.verbali.at(-1)))}">Verbale di Collaudo</a>`}` : ''}</div>
+      ${doc.problemi.length ? `<p class="errore">${esc(doc.problemi.join('; '))}</p>` : ''}
+      ${doc.ha_sezioni ? doc.sezioni.map((s) => `<div class="card"><b>${esc(s.heading)}</b><div class="md">${R.markdown(s.inner) || '<i class="muted">(vuota)</i>'}</div></div>`).join('') : `<div class="card md">${R.markdown(doc.pre + doc.footer)}</div>`}`;
+    const rb = main.querySelector('.riporta-bozza');
+    if (rb) rb.onclick = () => ui.riportaInBozza(res, r, nid);
+  };
+
+  ui.rotte.nota = function (main, nid) {
+    const n = LV.indice.note[nid];
+    ui.titolo(n ? n.titolo : 'Nota');
+    if (!n) { main.innerHTML = `<p>Nessuna nota con id "${esc(nid)}". <a href="#/">Torna ai rilasci</a></p>`; return; }
+    const fm = Object.entries(n.frontmatter);
+    main.innerHTML = `<div class="riga"><span class="badge">${esc(n.tipo)}</span> <span class="muted mono">${esc(n.rel)}</span></div>
+      ${fm.length ? `<details class="card"><summary>Proprietà</summary><div class="griglia">${fm.map(([k, v]) => campo(k, v)).join('')}</div></details>` : ''}
+      <div class="card md">${R.markdown(n.corpo)}</div>`;
+  };
+})(window.LV);
+
+/* === 75_ui_resoconto.js === */
+/* Editor a sezioni del resoconto (traduzione di resoconto_modifica.py): widget strutturati dove i dati lo sono,
+   testo altrove; Salva scrive solo le sezioni cambiate e le chiavi di frontmatter cambiate. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui, R = LV.res;
+  const FLAG = ['VINCOLI NORMATIVI', 'VARIAZIONE DATE PREVISTE', 'VARIAZIONE EFFORT', 'PRIVACY'];
+  const stripNl = (s) => (s || '').replace(/^\n+|\n+$/g, '');
+  const opzioni = (base, v) => base.concat(v && !base.includes(v) ? [v] : []);
+  const sel = (nome, opz, v, cls = '') => `<select name="${esc(nome)}" class="${cls}">${opz.map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const campo = (nome, label, v, attrs = '') => `<label class="campo"><span class="muted">${esc(label)}</span><input type="text" name="${esc(nome)}" value="${esc(v)}" ${attrs}></label>`;
+  const campoDataIt = (nome, label, v) => ui.campoDataIt(nome, label, v, { weekend: nome === 'RIUNIONE::DATA' });
+
+  ui.editorResoconto = function (container, nid, { dopoSalva, annulla }) {
+    const n = LV.indice.note[nid];
+    if (!n) { container.innerHTML = `<p>Nessuna nota con id "${esc(nid)}".</p>`; return; }
+    const f = LV.indice.files[n.rel];
+    let doc = R.parseResocontoDoc(n.rel, f.text, f.lastModified);   // ri-parsato dopo "Ricarica"
+    const codice = (LV.modelli.RESOCONTO_RE.exec(LV.modelli.stemDi(n.rel)) || [])[1] || n.frontmatter.codice_rilascio || '';
+    const r = codice ? LV.vault.rilascio(codice) : null;
+    if (!doc.ha_sezioni) { container.innerHTML = '<p class="errore">Resoconto senza sezioni ##: modificabile solo come nota grezza.</p>'; return; }
+    if (n.rel.split('/').at(-2) === 'inviati') { container.innerHTML = '<p class="errore">Resoconto già inviato: usa "Riporta in bozza" dalla pagina del resoconto.</p>'; return; }
+    let adm = doc.adm.map((p) => ({ ...p })), sogei = [...doc.sogei], azioni = [...doc.azioni], casi = doc.esito ? doc.esito.casi.map((c) => ({ ...c })) : [];
+    const h = [`${ui.datalistPersone()}<form class="editor" onsubmit="return false"><h2>${esc(doc.titolo)}</h2>${doc.problemi.length ? `<p class="errore">${esc(doc.problemi.join('; '))}</p>` : ''}`];
+    for (const s of doc.sezioni) {
+      h.push(`<div class="card sezione" data-heading="${esc(s.heading)}"><b>${esc(s.heading)}</b>`);
+      if (s.grezza || !R.SEZIONI_NOTE.includes(s.heading)) {
+        h.push(`${s.grezza ? '<p class="muted">Formato non standard: modifica come testo.</p>' : ''}<textarea name="${esc(s.heading)}" rows="${Math.min(20, s.inner.split('\n').length + 2)}">${esc(s.inner)}</textarea>`);
+      } else if (R.SEZIONI_KV.includes(s.heading)) {
+        const d = { RIUNIONE: doc.riunione, RESOCONTO: doc.resoconto, OBIETTIVO: doc.obiettivo }[s.heading];
+        h.push('<div class="griglia-form">');
+        for (const [k, v] of Object.entries(d)) {
+          const nome = `${s.heading}::${k}`;
+          if (s.heading === 'OBIETTIVO' && FLAG.includes(k)) h.push(`<label class="campo"><span class="muted">${esc(k)}</span>${sel(nome, opzioni(['SI', 'NO'], v), v || 'NO')}</label>`);
+          else if (s.heading === 'OBIETTIVO' || k.toUpperCase() === 'DATA COMPILAZIONE') h.push(campo(nome, k, v, 'readonly'));
+          else if (k.toUpperCase().includes('DATA')) h.push(campoDataIt(nome, k, v));
+          else h.push(campo(nome, k, v));
+        }
+        h.push('</div>');
+      } else if (s.heading === 'LISTA PARTECIPANTI') {
+        h.push('<div class="partecipanti"></div><p class="riga"><input name="nuovo-adm" list="lv-persone" placeholder="Persona (Anagrafica)" autocomplete="off"><select name="nuova-sigla"><option value=""></option><option>PM</option><option>RA</option><option>RP</option><option>RB</option></select><button type="button" class="aggiungi-adm">Aggiungi da Anagrafica</button></p>'
+          + '<p class="muted">SOGEI</p><div class="sogei"></div><p class="riga"><input name="nuovo-sogei" placeholder="nome SOGEI"><button type="button" class="aggiungi-sogei">Aggiungi SOGEI</button></p>'
+          + `<label class="campo"><span class="muted">Nota</span><input type="text" name="nota-partecipanti" value="${esc(doc.nota_partecipanti)}"></label>`);
+      } else if (R.SEZIONI_TESTO.includes(s.heading)) {
+        h.push(`<div class="due-colonne"><textarea name="${esc(s.heading)}" rows="10">${esc(s.inner)}</textarea><div class="md anteprima"></div></div>`);
+      } else if (s.heading === 'AZIONI CONCORDATE') {
+        h.push('<div class="azioni"></div><button type="button" class="aggiungi-azione">Aggiungi azione</button>');
+      } else if (s.heading === 'ESITO') {
+        const e = doc.esito;
+        const chiusureInv = Object.fromEntries(Object.entries(R.CHIUSURE).map(([k, v]) => [v, k]));
+        h.push(`<div class="casi"></div><p class="riga"><button type="button" class="aggiungi-caso">Aggiungi caso</button><button type="button" class="riallinea">Riallinea dal Verbale</button></p>
+          <label class="campo"><span class="muted">Esito complessivo</span>${sel('esito', [''].concat(opzioni(R.ESITI, e.esito)), e.esito)}</label>
+          <label class="campo"><span class="muted">Formula di chiusura</span>${sel('chiusura-sel', Object.values(R.CHIUSURE).concat(['__altro__']), e.chiusura in chiusureInv ? e.chiusura : '__altro__')}</label>
+          <textarea name="chiusura-testo" rows="2" ${e.chiusura in chiusureInv ? 'hidden' : ''}>${esc(e.chiusura in chiusureInv ? '' : e.chiusura)}</textarea>
+          <label class="campo"><span class="muted">Osservazioni (tra i casi di test e l'esito)</span><textarea name="osservazioni" rows="3">${esc(e.osservazioni)}</textarea></label>`);
+      }
+      h.push('</div>');
+    }
+    h.push('<div class="card"><b>Aggiungi sezione</b><div class="griglia-form"><label class="campo"><span class="muted">Titolo</span><input type="text" name="nuova-sezione-titolo" placeholder="AGGIORNAMENTO DEL GG-MM-AAAA"></label></div><textarea name="nuova-sezione-testo" rows="3"></textarea></div>');
+    h.push('<p class="riga"><button type="button" class="primario salva">Salva</button><button type="button" class="annulla">Annulla</button><span class="azioni-conflitto"></span></p></form>');
+    container.innerHTML = h.join('');
+    const form = container.querySelector('form.editor');
+    form.querySelectorAll('.picker-it').forEach((p) => { p.onchange = () => { const t = p.parentElement.querySelector('input[type=text]'); t.value = toIt(p.value); }; });
+    form.querySelectorAll('.due-colonne').forEach((box) => { const ta = box.querySelector('textarea'), md = box.querySelector('.anteprima'); const agg = () => { md.innerHTML = LV.render.markdown(ta.value); }; ta.oninput = agg; agg(); });
+    const leggiAdm = () => {
+      if (!form.querySelector('.partecipanti')) return;
+      adm = Array.from(form.querySelectorAll('.partecipanti .lv-riga')).map((row) => ({ ruolo: row.querySelector('[data-campo="ruolo"]').value, ufficio: row.querySelector('[data-campo="ufficio"]').value, nome: row.querySelector('[data-campo="nome"]').value }));
+      sogei = Array.from(form.querySelectorAll('.sogei input')).map((i) => i.value);
+    };
+    const renderPartecipanti = () => {
+      const box = form.querySelector('.partecipanti');
+      if (!box) return;
+      box.innerHTML = adm.map((p, i) => `<div class="riga lv-riga"><input data-campo="ruolo" value="${esc(p.ruolo)}" style="flex:3"><input data-campo="ufficio" value="${esc(p.ufficio)}" style="flex:1"><input data-campo="nome" value="${esc(p.nome)}" style="flex:2"><button type="button" data-su="${i}" title="su">↑</button><button type="button" data-giu="${i}" title="giù">↓</button><button type="button" data-rimuovi-adm="${i}" title="rimuovi">✕</button></div>`).join('');
+      form.querySelector('.sogei').innerHTML = sogei.map((s, i) => `<div class="riga lv-riga"><input data-campo="nome" name="sogei-${i}" value="${esc(s)}" style="flex:1"><button type="button" data-rimuovi-sogei="${i}" title="rimuovi">✕</button></div>`).join('');
+      box.querySelectorAll('[data-su]').forEach((b) => { b.onclick = () => { leggiAdm(); const i = +b.dataset.su; if (i > 0) [adm[i - 1], adm[i]] = [adm[i], adm[i - 1]]; renderPartecipanti(); }; });
+      box.querySelectorAll('[data-giu]').forEach((b) => { b.onclick = () => { leggiAdm(); const i = +b.dataset.giu; if (i < adm.length - 1) [adm[i + 1], adm[i]] = [adm[i], adm[i + 1]]; renderPartecipanti(); }; });
+      box.querySelectorAll('[data-rimuovi-adm]').forEach((b) => { b.onclick = () => { leggiAdm(); adm.splice(+b.dataset.rimuoviAdm, 1); renderPartecipanti(); }; });
+      form.querySelectorAll('[data-rimuovi-sogei]').forEach((b) => { b.onclick = () => { leggiAdm(); sogei.splice(+b.dataset.rimuoviSogei, 1); renderPartecipanti(); }; });
+    };
+    renderPartecipanti();
+    const aggAdm = form.querySelector('.aggiungi-adm');
+    if (aggAdm) aggAdm.onclick = () => {
+      const nome = form.querySelector('[name="nuovo-adm"]').value.trim(), sigla = form.querySelector('[name="nuova-sigla"]').value;
+      const persona = ui.notaPersona(nome);
+      if (!persona) return ui.toast("Scegli una persona dall'Anagrafica.", 'avviso');
+      leggiAdm();
+      const fm = persona.frontmatter, parti = [(fm.direzione || '').trim(), (fm.ufficio || '').trim()].filter(Boolean).join(' – ');
+      adm.push({ ruolo: sigla ? `(${sigla}) ${parti}`.replace(/\s+$/, '') : parti, ufficio: '', nome: persona.titolo });
+      renderPartecipanti();
+    };
+    const aggSogei = form.querySelector('.aggiungi-sogei');
+    if (aggSogei) aggSogei.onclick = () => { const el = form.querySelector('[name="nuovo-sogei"]'); const v = el.value.trim(); if (!v) return; leggiAdm(); sogei.push(v); el.value = ''; renderPartecipanti(); };
+    const leggiAzioni = () => { if (form.querySelector('.azioni')) azioni = Array.from(form.querySelectorAll('.azioni input')).map((i) => i.value); };
+    const renderAzioni = () => {
+      const box = form.querySelector('.azioni');
+      if (!box) return;
+      box.innerHTML = azioni.map((a, i) => `<div class="riga lv-riga"><input name="azione-${i}" value="${esc(a)}" placeholder="Responsabile — cosa — entro quando" style="flex:1"><button type="button" data-rimuovi-azione="${i}" title="rimuovi">✕</button></div>`).join('');
+      box.querySelectorAll('[data-rimuovi-azione]').forEach((b) => { b.onclick = () => { leggiAzioni(); azioni.splice(+b.dataset.rimuoviAzione, 1); renderAzioni(); }; });
+    };
+    renderAzioni();
+    const aggAz = form.querySelector('.aggiungi-azione');
+    if (aggAz) aggAz.onclick = () => { leggiAzioni(); azioni.push(''); renderAzioni(); };
+    const leggiCasi = () => { if (form.querySelector('.casi')) casi = Array.from(form.querySelectorAll('.casi .lv-riga')).map((row) => ({ nome: row.querySelector('[data-campo="nome"]').value.trim(), esito: row.querySelector('select').value })); };
+    const renderCasi = () => {
+      const box = form.querySelector('.casi');
+      if (!box) return;
+      box.innerHTML = casi.map((c, i) => `<div class="riga lv-riga"><input data-campo="nome" value="${esc(c.nome)}" style="flex:1">${sel(`caso-esito-${i}`, opzioni(['', 'Superato', 'Non superato'], c.esito), c.esito, 'caso-esito')}</div>`).join('');
+    };
+    renderCasi();
+    const aggCaso = form.querySelector('.aggiungi-caso');
+    if (aggCaso) aggCaso.onclick = () => { leggiCasi(); casi.push({ nome: '', esito: '' }); renderCasi(); };
+    const rial = form.querySelector('.riallinea');
+    if (rial) rial.onclick = () => {
+      if (!(r && r.verbali.length)) return ui.toast('Nessun Verbale di Collaudo nella cartella del rilascio.', 'avviso');
+      const vp = r.verbali.at(-1), v = LV.verb.parseVerbale(vp, LV.indice.files[vp].text, 0);
+      leggiCasi();
+      const nuovo = LV.verb.riallineaEsitoDaVerbale({ ...doc.esito, casi }, v);
+      casi = nuovo.casi; renderCasi();
+      if (nuovo.esito) form.querySelector('[name="esito"]').value = nuovo.esito;
+      if (nuovo.casi.some((c) => !c.esito)) ui.toast('Alcune verifiche del Verbale non hanno ancora esito.', 'avviso');
+    };
+    const chSel = form.querySelector('[name="chiusura-sel"]');
+    if (chSel) chSel.onchange = () => { form.querySelector('[name="chiusura-testo"]').hidden = chSel.value !== '__altro__'; };
+    const kv = (heading) => Object.fromEntries(Array.from(form.querySelectorAll(`[name^="${heading}::"]`)).map((el) => [el.name.slice(heading.length + 2), (el.value || '').trim()]));
+    const nuoviInner = () => {
+      leggiAdm(); leggiAzioni(); leggiCasi();
+      const out = {};
+      for (const s of doc.sezioni) {
+        const hd = s.heading;
+        if (s.grezza || !R.SEZIONI_NOTE.includes(hd) || R.SEZIONI_TESTO.includes(hd)) out[hd] = stripNl(form.querySelector(`textarea[name="${CSS.escape(hd)}"]`).value);
+        else if (R.SEZIONI_KV.includes(hd)) out[hd] = R.serKv(kv(hd));
+        else if (hd === 'LISTA PARTECIPANTI') out[hd] = R.serPartecipanti(adm.filter((p) => p.nome.trim()), sogei.filter((x) => x.trim()), form.querySelector('[name="nota-partecipanti"]').value.trim());
+        else if (hd === 'AZIONI CONCORDATE') out[hd] = R.serAzioni(azioni.filter((a) => a.trim()));
+        else if (hd === 'ESITO') {
+          const chiusura = chSel.value === '__altro__' ? stripNl(form.querySelector('[name="chiusura-testo"]').value) : chSel.value;
+          out[hd] = R.serEsito({ intro: doc.esito.intro, casi: casi.filter((c) => c.nome), osservazioni: stripNl(form.querySelector('[name="osservazioni"]').value), esito: form.querySelector('[name="esito"]').value, chiusura });
+        }
+      }
+      return out;
+    };
+    form.querySelector('.annulla').onclick = annulla;
+    const btnSalva = form.querySelector('.salva');
+    btnSalva.onclick = () => ui.conBottone(btnSalva, async () => {
+      const nuovi = nuoviInner();
+      const hNew = form.querySelector('[name="nuova-sezione-titolo"]').value.trim().toUpperCase();
+      if (hNew) { if (hNew in nuovi) return ui.toast(`La sezione ${hNew} esiste già.`, 'avviso'); nuovi[hNew] = stripNl(form.querySelector('[name="nuova-sezione-testo"]').value); }
+      const bodies = R.bodiesModificati(doc, nuovi);
+      const fmMod = {};
+      const dataEl = form.querySelector('[name="RIUNIONE::DATA"]');
+      if (dataEl) {
+        const v = dataEl.value.trim();
+        if (v !== (doc.riunione.DATA || '') && !/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return ui.toast('Data riunione non valida: usa GG/MM/AAAA.', 'avviso');
+        const iso = LV.md.parseData(v);
+        if (iso && iso !== (doc.frontmatter.data_riunione || '')) fmMod.data_riunione = iso;
+      }
+      if (doc.sezioni.some((s) => s.heading === 'RESOCONTO' && !s.grezza)) {
+        const { mod, errore } = R.campiFrontmatterResoconto(R.parseKv(nuovi.RESOCONTO) || {}, doc.resoconto);
+        if (errore) return ui.toast(errore, 'avviso');
+        if (mod.data_approvazione) ui.toast('Attenzione: con "Data approvazione" compilata il resoconto esce dalla convalida tacita (scadenze e definitivo automatici).', 'avviso', true);
+        Object.assign(fmMod, mod);
+      }
+      if (!Object.keys(bodies).length && !Object.keys(fmMod).length) return ui.toast('Nessuna modifica da salvare.');
+      const fFile = LV.indice.files[n.rel];
+      let testo = Object.keys(bodies).length ? LV.sk.salvaSezioni(fFile.text, bodies) : fFile.text;
+      if (Object.keys(fmMod).length) testo = LV.md.updateFrontmatterKeys(testo, fmMod);
+      try { await LV.vault.scriviFile(n.rel, testo, doc.lastModified); }
+      catch (e) {
+        ui.toast(e.message, 'errore', true);
+        if (e instanceof LV.vault.ConflittoModifica) ui.pulsanteRicarica(form, n.rel, () => { const ff = LV.indice.files[n.rel]; doc = R.parseResocontoDoc(n.rel, ff.text, ff.lastModified); });
+        return;
+      }
+      ui.toast(`Salvato: ${Object.keys(bodies).concat(Object.keys(fmMod)).join(', ')}.`, 'ok');
+      if (Object.keys(bodies).length && ['.docx', '.msg'].some((x) => n.rel.replace(/\.md$/, x) in LV.indice.files)) ui.toast('Il .docx/.msg esistenti sono ora superati: al prossimo sync il master rigenera il .docx e la mail (la pagina Bozze da inviare li segnala con ⚠️).', 'avviso', true);
+      dopoSalva(nid);
+    });
+  };
+
+  ui.formNuovoResoconto = function (container, r, { dopo }) {
+    const fasi = r.riunioni.map((m) => m.fase);
+    const ammesse = LV.sk.fasiAmmesse(fasi);
+    const oggi = LV.cruscotto.oggi();   // data locale
+    container.innerHTML = `<form class="nuovo-resoconto card" onsubmit="return false"><b>Nuova riunione</b>
+      <p class="muted">Lo scheletro nasce già compilato da scheda e Anagrafica (team della scheda: lista da integrare con il report presenze); restano da scrivere ARGOMENTI TRATTATI e AZIONI CONCORDATE.</p>
+      <div class="griglia-form">
+        <label class="campo"><span class="muted">Fase (o testo libero)</span><input name="fase" list="lv-fasi" value="${ammesse.includes('SAL') ? 'SAL' : esc(ammesse[0])}" autocomplete="off"><datalist id="lv-fasi">${ammesse.map((f) => `<option value="${esc(f)}">`).join('')}</datalist></label>
+        <label class="campo"><span class="muted">Numero SAL</span><input name="n_sal" type="number" min="1" value="${LV.sk.prossimoSal(fasi)}"></label>
+        ${ui.campoData('data', 'Data riunione', oggi, { weekend: true })}
+        <label class="campo"><span class="muted">Variante collaudo</span><select name="variante"><option value="">—</option><option value="firma">Approvazione con firma (sezione FIRME nel Word)</option><option value="telematica">Approvazione telematica, da raccogliere via mail</option><option value="telematica_in_riunione">Approvazione telematica già data in riunione</option></select></label>
+        <label class="campo largo"><span class="muted">Nome file trascritto (opzionale)</span><input name="trascritto"></label></div>
+      <p class="riga"><button type="button" class="primario crea-resoconto">Crea</button></p></form>`;
+    const form = container.querySelector('form');
+    ui.collegaCampi(form);
+    const btnCrea = form.querySelector('.crea-resoconto');
+    btnCrea.onclick = () => ui.conBottone(btnCrea, async () => {
+      const v = Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, (el.value || '').trim()]));
+      if (!v.fase) return ui.toast('Indica la fase.', 'avviso');
+      if (LV.scrittura.VIETATI.test(v.fase)) return ui.toast('La fase non può contenere \\ / : * ? " < > | (finisce nel nome del file).', 'avviso');
+      const dataIso = LV.md.parseData(v.data);
+      if (!dataIso) return ui.toast('Data non valida: usa AAAA-MM-GG.', 'avviso');
+      if (v.fase === 'Collaudo' && !v.variante) return ui.toast('Scegli la variante del collaudo.', 'avviso');
+      const etichetta = LV.sk.etichettaFase(v.fase, +v.n_sal || 1);
+      const rel = `${r.rel.split('/').slice(0, -1).join('/')}/${LV.sk.nomeFile(r.codice, etichetta, dataIso)}`;
+      if (Object.keys(LV.indice.files).some((k) => k.toLowerCase() === rel.toLowerCase())) return ui.toast(`Esiste già ${rel.split('/').at(-1)}.`, 'avviso');
+      const persone = ui.persone().map((p) => p.nome);
+      const info = (nome) => (ui.notaPersona(nome) || {}).frontmatter || {};
+      const team = LV.sk.teamFromRelease(LV.indice.files[r.rel].text, persone);
+      let verbale = null;
+      if (etichetta === 'Collaudo' && r.verbali.length) { const vp = r.verbali.at(-1); verbale = LV.verb.parseVerbale(vp, LV.indice.files[vp].text, 0); }
+      const avvisi = ['Partecipanti dal team della scheda (lista incompleta): integra con il report presenze.'];
+      if (etichetta === 'Collaudo' && !verbale) avvisi.push('Nessun Verbale di Collaudo: ESITO senza casi di test.');
+      let testo;
+      try { testo = LV.sk.creaScheletro(r.frontmatter, etichetta, dataIso, { team, variante: v.variante || null, verbale, trascritto: v.trascritto, info, oggiIso: oggi }); }
+      catch (e) { return ui.toast(e.message, 'avviso'); }
+      try { await LV.vault.creaFile(rel, testo); } catch (e) { return ui.toast(e.message, 'errore', true); }
+      try {
+        const s = LV.indice.files[r.rel];
+        await LV.vault.scriviFile(r.rel, LV.sk.aggiungiRiunione(s.text, dataIso, LV.sk.faseTabella(etichetta), v.trascritto, LV.modelli.stemDi(rel)), s.lastModified);
+      } catch (e) {   // come nuovo_resoconto.py: il file c'è, la riga si aggiunge a mano
+        if (!(e instanceof LV.vault.ConflittoModifica)) return ui.toast(e.message, 'errore', true);
+        avvisi.push('Scheda cambiata nel frattempo: riga Riunioni non aggiunta (aggiungila a mano).');
+      }
+      for (const a of avvisi) ui.toast(a, 'avviso');
+      dopo(LV.modelli.notaId(rel), avvisi);
+    });
+  };
+
+  ui.riportaInBozza = function (res, r, nid) {
+    if (!r) return ui.toast('Scheda del rilascio non trovata: impossibile aggiornare la tabella Riunioni.', 'errore', true);
+    ui.conferma('Sposta .md/.docx/.pdf fuori da inviati/, elimina il .msg già inviato, imposta inviato: false, svuota la scadenza e segna ❌ nella scheda. Dopo le correzioni rigenera il .docx dal master; il sync genera il nuovo .msg.', 'Riporta in bozza', { titolo: 'Riportare il resoconto in bozza?' }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        const { nuovo, avvisi } = await LV.vault.riportaInBozza(res, r);
+        ui.toast('Resoconto riportato in bozza.', 'ok');
+        for (const a of avvisi) ui.toast(a, 'avviso', true);
+        ui.naviga(`#/resoconto/${encodeURIComponent(LV.modelli.notaId(nuovo))}/modifica`);
+      } catch (e) { ui.toast(`${e.parziale ? 'Rettifica interrotta, verifica i file del rilascio' : 'Rettifica non riuscita'}: ${e.message}`, 'errore', true); }
+    });
+  };
+})(window.LV);
+
+/* === 80_ui_modifica.js === */
+/* Modifica scheda: solo i campi strutturati, scrive solo le chiavi cambiate (traduzione di rilascio_modifica.py). */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui, S = LV.scrittura;
+  const conCorrente = (opz, v) => opz.concat(v && !opz.includes(v) ? [v] : []);
+  const sel = (nome, label, opz, v) => `<label class="campo"><span class="muted">${esc(label)}</span><select name="${nome}">${opz.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+  const txt = (nome, label, v, largo = false) => `<label class="campo ${largo ? 'largo' : ''}"><span class="muted">${esc(label)}</span><input type="text" name="${nome}" value="${esc(v)}"></label>`;
+  ui.modificaScheda = function (main, codice) {
+    const r = LV.vault.rilascio(codice);
+    ui.titolo(`Modifica ${codice}`);
+    if (!r) { main.innerHTML = `<p>Nessun rilascio con codice "${esc(codice)}". <a href="#/">Torna ai rilasci</a></p>`; return; }
+    const fm = r.frontmatter;
+    let baseline = r.lastModified;
+    main.innerHTML = `${ui.datalistPersone()}<form class="modifica" onsubmit="return false"><h2>Modifica ${esc(codice)}</h2>
+      <div class="card"><b>Anagrafica</b><div class="griglia-form">
+        ${txt('descrizione_rilascio', 'Descrizione rilascio', fm.descrizione_rilascio || '', true)}
+        ${txt('descrizione_sottoprogetto', 'Descrizione sottoprogetto', fm.descrizione_sottoprogetto || '')}
+        ${txt('descrizione_progetto', 'Descrizione progetto', fm.descrizione_progetto || '')}
+        ${sel('stato', 'Stato', conCorrente(S.STATI, fm.stato || 'Bozza'), fm.stato || 'Bozza')}
+        ${sel('vincoli_normativi', 'Vincoli normativi', conCorrente(['Sì', 'No'], fm.vincoli_normativi || 'No'), fm.vincoli_normativi || 'No')}
+        ${txt('nota_variazione_date', 'Nota variazione date', fm.nota_variazione_date || '')}</div></div>
+      <div class="card"><b>Team</b><div class="griglia-form">${S.CAMPI_TEAM.map(([k, l]) => (k === 'struttura_business' ? txt(k, l, fm[k] || '') : ui.campoPersona(k, l, fm[k] || ''))).join('')}</div></div>
+      <div class="card"><b>Date (AAAA-MM-GG)</b><div class="griglia-form">${S.CAMPI_DATE.map(([k, l]) => ui.campoData(k, l, fm[k] || '')).join('')}</div></div>
+      <p class="riga"><button type="button" class="primario salva">Salva modifiche</button><a class="bottone" href="#/rilascio/${esc(codice)}">Annulla</a><span class="azioni-conflitto"></span></p></form>`;
+    const form = main.querySelector('form');
+    ui.collegaCampi(form);
+    const valori = () => Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, (el.value || '').trim()]));
+    const iniziali = valori();
+    const btnSalva = form.querySelector('.salva');
+    btnSalva.onclick = () => ui.conBottone(btnSalva, async () => {
+      const v = valori();
+      const err = S.validaDateIso(v);
+      if (err) return ui.toast(err, 'avviso');
+      const mod = S.diffCampi(v, iniziali);
+      if (!Object.keys(mod).length) return ui.toast('Nessuna modifica da salvare.');
+      const f = LV.indice.files[r.rel];
+      const nuovo = LV.md.updateFrontmatterKeys(f.text, mod);
+      if (nuovo === f.text) return ui.toast('Frontmatter non riconosciuto in questa scheda (deve iniziare con --- alla prima riga): nessuna scrittura. Correggila in Obsidian.', 'errore', true);
+      try {
+        await LV.vault.scriviFile(r.rel, nuovo, baseline);
+      } catch (e) {
+        ui.toast(e.message, 'errore', true);
+        if (e instanceof LV.vault.ConflittoModifica) ui.pulsanteRicarica(form, r.rel, () => { baseline = LV.indice.files[r.rel].lastModified; });   // con try/catch se il file è sparito
+        return;
+      }
+      ui.toast(`Scheda aggiornata (${Object.keys(mod).join(', ')}).`, 'ok');
+      ui.naviga(`#/rilascio/${codice}`);
+    });
+  };
+})(window.LV);
+
+/* === 85_ui_anagrafica.js === */
+/* Anagrafica: elenco delle persone con filtro, scheda al clic, Nuova persona. */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui;
+  const COL = [['nome', 'Nome'], ['organizzazione', 'Org.'], ['direzione', 'Direzione'], ['ufficio', 'Ufficio'], ['email', 'Email'], ['ruolo_tipico', 'Ruolo tipico']];
+  ui.rotte.anagrafica = function (main) {
+    ui.titolo('Anagrafica');
+    const righe = ui.persone();
+    main.innerHTML = `<div class="barra"><span class="muted">${righe.length} persone</span><span style="flex:1"></span>
+        <input id="filtro-testo" placeholder="Filtra (nome, ufficio, email…)"><button class="primario nuova-persona-pagina">Nuova persona</button></div>
+      <p class="muted">Le schede si creano anche in automatico dai CSV presenze (Carica fonti, nell'app Python); qui si aggiungono a mano le persone da usare nei ruoli delle schede rilascio.</p>
+      <table class="lv"><thead><tr>${COL.map(([, l]) => `<th>${esc(l)}</th>`).join('')}</tr></thead><tbody></tbody></table>`;
+    const tbody = main.querySelector('tbody');
+    const render = (t = '') => {
+      const q = t.trim().toLowerCase();
+      tbody.innerHTML = righe.filter((r) => !q || COL.some(([k]) => r[k].toLowerCase().includes(q)))
+        .map((r) => `<tr data-id="${esc(r.id)}">${COL.map(([k]) => `<td>${esc(r[k])}</td>`).join('')}</tr>`).join('');
+    };
+    render();
+    main.querySelector('#filtro-testo').oninput = (e) => render(e.target.value);
+    tbody.onclick = (e) => { const tr = e.target.closest('tr'); if (tr) ui.naviga(`#/nota/${encodeURIComponent(tr.dataset.id)}`); };
+    main.querySelector('.nuova-persona-pagina').onclick = () => ui.dialogoNuovaPersona(() => ui.naviga());
+  };
+})(window.LV);
+
+/* === 90_ui_nuovo.js === */
+/* Nuovo punto di piano: crea la scheda come build_project_pages.write_release_page (traduzione di nuovo.py). */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui, S = LV.scrittura;
+  const txt = (nome, label, v = '', largo = false, ph = '') => `<label class="campo ${largo ? 'largo' : ''}"><span class="muted">${esc(label)}</span><input type="text" name="${nome}" value="${esc(v)}" placeholder="${esc(ph)}"></label>`;
+  ui.rotte.nuovo = function (main) {
+    ui.titolo('Nuovo punto di piano');
+    const anno = ui.anno;
+    main.innerHTML = `${ui.datalistPersone()}<form class="nuovo" onsubmit="return false"><h2>Nuovo punto di piano (PO ${anno})</h2>
+      <div class="card"><b>Codici e descrizioni</b><div class="griglia-form">${txt('codice', 'Codice rilascio', '', false, 'ADM953-01-0M')}${txt('desc_rilascio', 'Descrizione rilascio', '', true)}${txt('desc_sub', 'Descrizione sottoprogetto', '', true)}${txt('desc_progetto', 'Descrizione progetto', '', true)}</div></div>
+      <div class="card"><b>Team</b><div class="griglia-form">${S.CAMPI_TEAM.map(([k, l]) => (k === 'struttura_business' ? txt(k, l) : ui.campoPersona(k, l, k === 'pm' ? 'Lunardi Astolfo' : ''))).join('')}</div></div>
+      <div class="card"><b>Date e vincoli</b><div class="griglia-form">${ui.campoData('data_collaudo_prevista', 'Collaudo previsto', '')}${ui.campoData('data_rilascio_prevista', 'Rilascio previsto', '')}
+        <label class="campo"><span class="muted">Vincoli normativi</span><select name="vincoli_normativi"><option>No</option><option>Sì</option></select></label></div></div>
+      <p class="riga"><button type="button" class="primario crea">Crea scheda</button><a class="bottone" href="#/">Annulla</a></p></form>`;
+    const form = main.querySelector('form');
+    ui.collegaCampi(form);
+    const btnCrea = form.querySelector('.crea');
+    btnCrea.onclick = () => ui.conBottone(btnCrea, async () => {
+      const v = Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, (el.value || '').trim()]));
+      const cod = v.codice.toUpperCase();
+      if (!S.CODICE_RE.test(cod)) return ui.toast('Codice non valido: formato atteso ADMxxx-xx-xX (es. ADM953-01-0M).', 'avviso');
+      if (LV.vault.rilascio(cod) || Object.keys(LV.indice.files).some((f) => f.startsWith(`PO ${anno}/${cod}/`))) return ui.toast(`${cod} esiste già: usa "Modifica scheda" dal dettaglio.`, 'avviso');
+      if (!v.desc_rilascio) return ui.toast('La descrizione del rilascio è obbligatoria.', 'avviso');
+      const err = S.validaDateIso(v);
+      if (err) return ui.toast(err, 'avviso');
+      const rel = { cod_rilascio: cod, cod_sub: cod.split('-').slice(0, 2).join('-'), desc_progetto: v.desc_progetto, desc_sub: v.desc_sub, desc_rilascio: v.desc_rilascio,
+        vincoli_normativi: v.vincoli_normativi, ...Object.fromEntries(S.CAMPI_TEAM.map(([k]) => [k, v[k]])), data_collaudo_prevista: v.data_collaudo_prevista, data_rilascio_prevista: v.data_rilascio_prevista };
+      const { rel: percorso, text } = S.creaRilascioTesto(rel, anno);
+      try { await LV.vault.creaFile(percorso, text); } catch (e) { return ui.toast(e.message, 'errore', true); }
+      ui.toast(`Scheda ${cod} creata.`, 'ok');
+      ui.naviga(`#/rilascio/${cod}`);
+    });
+  };
+})(window.LV);
+
+/* === 95_ui_verbale.js === */
+/* Verbale di Collaudo: verifiche con esito, esito complessivo; Salva riscrive le tre sezioni (traduzione di verbale.py). */
+(function (LV) {
+  'use strict';
+  const esc = LV.esc, ui = LV.ui, V = LV.verb;
+  const ESITI = ['', 'Superato', 'Non superato'];
+  const SEZIONI = ['Riepilogo verifiche', 'Dettaglio verifiche', 'Esito complessivo'];
+  const sel = (nome, opz, v) => `<select name="${nome}">${opz.map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o) || '—'}</option>`).join('')}</select>`;
+  ui.rotte.verbale = function (main, nid) {
+    const n = LV.indice.note[nid];
+    ui.titolo('Verbale di Collaudo');
+    if (!n || !n.rel.includes('Verbale di Collaudo')) { main.innerHTML = '<p>Verbale non trovato. <a href="#/">Torna ai rilasci</a></p>'; return; }
+    const f = LV.indice.files[n.rel];
+    const v = V.parseVerbale(n.rel, f.text, f.lastModified);
+    const codice = v.frontmatter.codice_rilascio || '';
+    const extra = LV.res.spezzaSezioni(LV.md.splitBody(f.text)).blocchi.map((b) => b.heading).filter((h) => !SEZIONI.includes(h));
+    let verifiche = v.verifiche.map((x) => ({ ...x }));
+    main.innerHTML = `<form class="verbale" onsubmit="return false"><div class="riga"><h2>${esc(n.titolo)}</h2><span style="flex:1"></span>${codice ? `<a class="bottone" href="#/rilascio/${esc(codice)}">${esc(codice)}</a>` : ''}<a class="bottone" href="#/nota/${encodeURIComponent(nid)}">Nota grezza</a></div>
+      ${v.problemi.length ? `<p class="errore">${esc(v.problemi.join('; '))}</p>` : ''}
+      ${extra.length ? `<p class="errore">Verbale con sezioni aggiuntive (${esc(extra.join(', '))}): modificalo in Obsidian, qui il salvataggio è disabilitato.</p>` : ''}
+      <div class="verifiche"></div><p><button type="button" class="aggiungi-verifica">Aggiungi verifica</button></p>
+      <div class="card"><b>Esito complessivo</b><div class="griglia-form">
+        <label class="campo"><span class="muted">Esito</span>${sel('esito_complessivo', [''].concat(V.ESITI_VERBALE), v.esito_complessivo)}</label>
+        ${ui.campoDataIt('data_verbale', 'Data verbale (GG/MM/AAAA)', v.data_verbale, { weekend: true })}
+        <label class="campo largo"><span class="muted">Presenti</span><input name="presenti" value="${esc(v.presenti)}"></label>
+        <label class="campo largo"><span class="muted">Riserve / azioni correttive</span><input name="riserve" value="${esc(v.riserve)}"></label></div></div>
+      <p class="riga"><button type="button" class="primario salva" ${extra.length ? 'disabled' : ''}>Salva</button><a class="bottone" href="#/rilascio/${esc(codice)}">Annulla</a><span class="azioni-conflitto"></span></p></form>`;
+    const form = main.querySelector('form');
+    ui.collegaCampi(form);
+    const render = () => {
+      form.querySelector('.verifiche').innerHTML = verifiche.map((x) => `<div class="card verifica" data-n="${x.n}"><div class="riga"><span class="muted">${x.n}.</span><input name="nome" value="${esc(x.nome)}" style="flex:1">${sel('esito', ESITI.concat(x.esito && !ESITI.includes(x.esito) ? [x.esito] : []), x.esito)}</div>
+        <div class="riga"><input name="data" value="${esc(x.data)}" placeholder="Data GG/MM/AAAA" style="width:140px"><input name="testato_da" value="${esc(x.testato_da)}" placeholder="Testato da" style="flex:1"><input name="note" value="${esc(x.note)}" placeholder="Note / anomalie" style="flex:2"></div></div>`).join('');
+    };
+    const leggi = () => {
+      verifiche = Array.from(form.querySelectorAll('.verifica')).map((row) => ({ n: +row.dataset.n, nome: row.querySelector('[name=nome]').value.trim(), esito: row.querySelector('[name=esito]').value,
+        data: row.querySelector('[name=data]').value.trim(), testato_da: row.querySelector('[name=testato_da]').value.trim(), note: row.querySelector('[name=note]').value.trim() }));
+    };
+    render();
+    form.querySelector('.aggiungi-verifica').onclick = () => { leggi(); verifiche.push({ n: verifiche.length + 1, nome: '', esito: '', data: '', testato_da: '', note: '' }); render(); };
+    const btnSalva = form.querySelector('.salva');
+    btnSalva.onclick = () => ui.conBottone(btnSalva, async () => {
+      leggi();
+      const dataRaw = form.querySelector('[name=data_verbale]').value.trim();
+      const dataIso = dataRaw ? LV.md.parseData(dataRaw) : '';
+      if (dataRaw && !dataIso) return ui.toast('Data verbale non valida: usa GG/MM/AAAA.', 'avviso');
+      v.verifiche = verifiche.filter((x) => x.nome);
+      v.esito_complessivo = form.querySelector('[name=esito_complessivo]').value;
+      v.data_verbale = dataIso ? `${dataIso.slice(8)}/${dataIso.slice(5, 7)}/${dataIso.slice(0, 4)}` : '';
+      v.presenti = form.querySelector('[name=presenti]').value.trim();
+      v.riserve = form.querySelector('[name=riserve]').value.trim();
+      try { await LV.vault.scriviFile(n.rel, V.serVerbale(v, LV.cruscotto.oggi()), v.lastModified); }
+      catch (e) {
+        ui.toast(e.message, 'errore', true);
+        if (e instanceof LV.vault.ConflittoModifica) ui.pulsanteRicarica(form, n.rel, () => { v.lastModified = LV.indice.files[n.rel].lastModified; });
+        return;
+      }
+      ui.toast('Verbale salvato (riepilogo e dettaglio riallineati).', 'ok');
+      ui.naviga();   // si resta sul verbale, ridisegnato dal file salvato (come verbale.py)
+    });
+  };
+})(window.LV);
+
+/* === 98_ui_manuale.js === */
+// Manuale: leviathadm/MANUALE.md incorporato da build.py in LV.manuale (unica fonte con la versione Python).
+(function (LV) {
+  const ui = LV.ui;
+
+  ui.rotte.manuale = function (main) {
+    ui.titolo('Manuale');
+    main.innerHTML = `<section class="manuale card md">${LV.render.markdown(LV.manuale || '# Manuale\n\nManuale non incorporato: ricostruisci leviathadm.html con build.py.')}</section>
+      ${LV.indice ? '' : '<p><a href="#/">Torna all\'apertura del vault</a></p>'}`;
+  };
+})(window.LV);
+
+/* === manuale === */
+LV.manuale = "# Manuale di LeviathADM\n\nLeviathADM è il cruscotto del Piano Operativo (PO): legge e scrive direttamente i file markdown del vault Obsidian (\"PO 2026/\", \"Anagrafica/\") e non ha un database. Esiste in due versioni con le stesse regole:\n\n| Versione | Come si avvia | Quando usarla |\n|---|---|---|\n| **Python** (dashboard locale) | `leviathadm.cmd` nella radice del vault, poi `http://127.0.0.1:8080` | PC con Python: tutte le funzioni, comprese le azioni che lanciano gli script (convocazioni, sync, Word, Outlook) |\n| **Web** (`leviathadm.html`) | doppio clic sul file in Edge o Chrome, poi \"Apri cartella\" | PC senza Python: lettura e scrittura del vault nel browser, nessuna installazione |\n\nQuesto manuale è lo stesso nelle due versioni: le differenze sono indicate dove servono e riassunte in fondo.\n\n**Regola che vale sempre:** l'applicazione **non invia mai una mail**. Produce solo bozze (`.msg` per i resoconti, `.eml` per le convocazioni) che si aprono in Outlook e si inviano a mano.\n\n---\n\n## Avvio\n\n**Versione Python.** `leviathadm.cmd` crea l'ambiente virtuale `.venv/` al primo avvio, installa i requisiti, verifica pacchetti, Outlook, Word, pandoc, ruolo del PC e porta, poi apre il server su `http://127.0.0.1:8080`. Opzioni: `--check` (solo verifiche), `--porta N` (altra porta). L'app va avviata da una console propria e fermata con Ctrl+C. Nel pack demo `leviathadm.cmd` usa il Python embedded della cartella `python/`.\n\n**Versione Web.** Aprire `leviathadm.html`, premere **Apri cartella…** e scegliere la cartella del vault (quella che contiene `PO 2026/` e `Anagrafica/`). Il browser chiede il permesso a ogni apertura e non memorizza nulla della cartella scelta. Serve Edge o Chrome (File System Access); se una policy aziendale blocca l'accesso ai file compare un avviso nella schermata iniziale. Il pulsante **⟳** nell'header rilegge tutti i file dal disco.\n\n**Header e menu.** Il menu laterale (☰) elenca le viste; il selettore del **piano** (anno) nell'header sceglie la cartella `PO <anno>/` quando il vault ne contiene più di una; **◐** cambia tema chiaro/scuro. Nella versione Python c'è anche la **ricerca globale** (Ctrl+K) su codici, titoli e testi delle note.\n\n---\n\n## Rilasci\n\nLa vista iniziale elenca i punti di piano del piano selezionato: codice, descrizione, stato, PM, RA, RP, collaudo previsto / effettivo, rilascio previsto / effettivo. Le intestazioni ordinano la tabella (per data dove la colonna è una data); i filtri in alto restringono per stato o testo.\n\nGli **stati** del ciclo di vita, in ordine: Da Avviare, Bozza, Startup, Analisi, In corso, In Verifica, Collaudo, Concluso. Lo stato aggiuntivo **Rinominato** segnala una scheda storica rinumerata o confluita in un altro codice (campo `codice_rilascio_successivo`).\n\n### Dettaglio del rilascio\n\nUn clic sulla riga apre la scheda `ADMxxx-xx-xX.md`:\n\n- **Metadati e team**: codici e descrizioni di progetto, sottoprogetto e rilascio; PM, RA, RP, referente business e struttura, referente SOGEI; vincoli normativi; date; protocolli.\n- **Ciclo di vita**: lo stepper delle riunioni (Startup → Prima Analisi → SAL → Collaudo) con, per ogni fase, il resoconto collegato. Lo step **+** crea un nuovo resoconto (vedi \"Resoconti\").\n- **Riunioni, Azioni aperte, Decisioni chiave, Prossima riunione**: le sezioni della scheda. Le azioni con una scadenza (`— scadenza: GG/MM/AAAA`) compaiono anche in Scadenze.\n- **Allegati protocolli**: la tabella dei documenti protocollati (analisi, approvazione, disponibilità a collaudo, collaudo, estensione).\n- **Modifica scheda**: modulo con i campi del frontmatter. Si salvano **solo le chiavi cambiate**; le date si normalizzano in ISO; `DA COMPLETARE` è ammesso dove un dato non è ancora noto.\n- **Azioni** (solo Python): Carica fonti, Convocazione startup, Convocazione collaudo, Genera mail resoconto, Prepara cartella firma. Lanciano gli script del vault in un sottoprocesso; l'output compare nel pannello.\n\n### Nuovo punto di piano\n\nDal menu **Nuovo punto di piano**: codice rilascio, sottoprogetto, descrizioni, ruoli, date. Crea la cartella `PO <anno>/<codice>/` e la scheda nello stesso formato di quelle generate dall'Excel PO. Il codice deve avere la forma `ADMxxx-xx-xX` e non esistere già. I campi persona suggeriscono i nomi dell'Anagrafica e con l'icona a destra creano al volo una nuova persona.\n\n---\n\n## Resoconti\n\nOgni riunione produce un resoconto `ADMxxx-xx-xX - AAAAMMGG Resoconto <Tipo>.md` nella cartella del rilascio (la **bozza**); dopo l'invio i file passano in `inviati/`.\n\n### Nuovo resoconto\n\nDallo step **+** del ciclo di vita (o dal pulsante \"Nuovo resoconto\" nella versione Python): si sceglie la fase (uguale o successiva all'ultima già fatta, o un testo libero) e la data. Viene generato lo **scheletro** con le sezioni fisse già compilate dalla scheda e dall'Anagrafica: tabelle RIUNIONE / RESOCONTO / OBIETTIVO, LISTA PARTECIPANTI, formula dell'OBIETTIVO DELLA RIUNIONE; nella scheda viene aggiunta la riga in `## Riunioni` con ❌ (non inviato). Restano da scrivere **ARGOMENTI TRATTATI** e **AZIONI CONCORDATE** (per il collaudo: ESITO, con i casi di test presi dal Verbale).\n\nNella versione Python i partecipanti possono venire dal **CSV presenze di Teams** caricato con \"Carica fonti\"; nella versione Web vengono dal team della scheda (la lista va completata a mano).\n\n### Editor a sezioni\n\nIl resoconto si modifica sezione per sezione: partecipanti (selettore con i nomi dell'Anagrafica), argomenti, azioni (una per riga, con responsabile e data), esito del collaudo. Si riscrivono **solo le sezioni cambiate**; `data_riunione`, `approvato_da` e `data_approvazione` restano allineati tra frontmatter e tabelle. Sotto lo stepper del ciclo di vita compare il resoconto della fase scelta: editor inline se è una bozza, sola lettura con il lucchetto se è già inviato.\n\n### Dal markdown al Word\n\n- **Rigenera .docx** produce il documento Word ufficiale dal `.md` con il template giusto (startup/analisi/SAL, collaudo con firme o con approvazione telematica) e imposta DATA COMPILAZIONE a oggi. Nella versione Web il `.docx` non si può generare: la bozza viene marcata ⚠️ \"docx superato\" e il sync del PC master lo rigenera.\n- Il `.msg` (mail con il resoconto allegato) lo genera il **sync** sul PC con Outlook. Non va creato a mano.\n\n### Invio e approvazione tacita\n\n1. Quando la mail è stata inviata davvero, **Segna inviato** (vista \"Bozze da inviare\"): i file passano in `inviati/`, `inviato: true`, `data_scadenza_approvazione` = +5 giorni lavorativi, ✅ nella scheda.\n2. Alla scadenza senza osservazioni il resoconto è approvato tacitamente: **Chiudi approvazione** registra `data_approvazione`; PDF e mail definitiva li completa il sync del master.\n3. **Segna definitivo inviato** chiude il ciclo (`definitivo_inviato: true`).\n\n### Riporta in bozza\n\nPer rettificare un resoconto già inviato: **Riporta in bozza** riporta `.md` e `.docx` nella cartella del rilascio, elimina il `.msg` obsoleto, azzera `inviato` e la scadenza, rimette ❌ nella scheda. Si corregge, si rigenera il `.docx` e al prossimo invio si segna di nuovo inviato.\n\n### Verbale di Collaudo\n\nLa convocazione del collaudo crea `ADMxxx-xx-xX - AAAAMMGG Verbale di Collaudo.md` con l'elenco delle verifiche. L'editor del Verbale (dal dettaglio rilascio) permette di segnare ogni verifica come superata o non superata, con data, tester e note, e l'esito complessivo (positivo, con riserva, negativo): riepilogo e dettaglio restano allineati. Il resoconto di collaudo prende da qui i casi di test e l'esito.\n\n---\n\n## Cruscotto\n\nCinque viste, le stesse delle pagine generate in Obsidian, calcolate al volo dai file del vault.\n\n### Scadenze\n\nQuattro sezioni: **Tassative** (convocazione del collaudo entro 20 giorni dalla disponibilità a collaudo: obbligo normativo, con nota \"provvisoria\" finché il protocollo ADM non è noto), **Scadute**, **Questa settimana**, **Prossime**. Vi compaiono le milestone delle schede (fine analisi, collaudo previsto, rilascio previsto), le azioni aperte con data e le scadenze di approvazione tacita dei resoconti inviati.\n\n### Bozze da inviare\n\n- **Approvazioni tacite scadute**: resoconti inviati oltre la scadenza senza approvazione → Chiudi approvazione.\n- **Bozze iniziali**: resoconti pronti nella cartella del rilascio, con lo stato di `.docx` e `.msg` → Segna inviato (chiede conferma se manca il `.msg` e ricorda la scadenza +5 giorni lavorativi).\n- **Convocazioni da inviare**: le `.eml` di startup e collaudo → Segna inviata (sposta in `inviati/`).\n- **Definitivi**: resoconti approvati di cui manca l'invio della versione definitiva → Segna definitivo inviato.\n\nUn resoconto di collaudo precompilato prima della riunione **non** compare tra le bozze finché la scheda non ha `data_collaudo_effettiva` (vedi \"Da collaudare\").\n\n### Da collaudare\n\nPunti di piano con disponibilità a collaudo ricevuta e collaudo non ancora svolto. Il campo **Data collaudo effettiva** registra la riunione avvenuta (mai una data futura; conferma richiesta se cade di sabato o domenica) e fa rientrare il resoconto di collaudo nel flusso delle bozze.\n\n### Da firmare\n\nLettere di fine collaudo (Trasmissione copia verbale · Richiesta estensione in esercizio) presenti nella cartella del rilascio: **da mandare in firma** e **in attesa di protocollazione**. I pulsanti registrano i passaggi (`in_firma`, `protocollata`); nella versione Python \"Prepara cartella firma\" produce la cartella con i PDF.\n\n### Stato invii\n\nMatrice punti di piano × fase: per ogni resoconto **P** = provvisorio inviato, **D** = definitivo inviato, con il link al file. Sola lettura: gli stati si cambiano da \"Bozze da inviare\".\n\n---\n\n## Anagrafica\n\nElenco delle persone del vault (`Anagrafica/<Cognome Nome>.md`) con filtro per nome, organizzazione, direzione e ufficio. **Nuova persona** crea la scheda con organizzazione, direzione, ufficio, email e ruolo tipico; la stessa cosa si può fare al volo dai campi persona di Modifica scheda, Nuovo punto di piano e del selettore dei partecipanti. I nodi delle strutture (direzioni, uffici) stanno in `Anagrafica/Strutture/`.\n\n---\n\n## Azioni e Sync (versione Python)\n\nLa pagina **Azioni** raccoglie le operazioni che lanciano gli script del vault: daily check, rigenerazione delle pagine, schede dall'Excel PO, strutture, refresh Anagrafica, audit degli invii, organizzazione delle cartelle Outlook. Ogni pulsante è disabilitato, con il motivo, quando manca un prerequisito (Outlook, Word, pandoc) o quando l'azione è riservata al PC **master**.\n\nIl pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera i `.msg` mancanti, ricostruisce la cartella locale `Bozze da inviare/`, archivia gli inviati e, sul master, chiude le approvazioni tacite e rigenera i `.docx` superati. **Durante un'azione ogni scrittura dell'app è sospesa** (banner in alto), così nessun file si sposta mentre git lavora. **Log azioni** mostra la cronologia delle esecuzioni.\n\n**Ruoli dei PC.** `scripts/machines.json` assegna a ogni hostname il ruolo master o slave: il master è l'unico che esegue l'automazione mutante; gli slave leggono, scrivono e sincronizzano. **Riavvia backend** (nel menu) riavvia il server in una nuova console.\n\n---\n\n## Regole comuni e casi particolari\n\n- **Conflitti di modifica.** Prima di scrivere, l'app verifica che il file non sia cambiato sul disco da quando lo ha letto (nella versione Web: data di modifica e contenuto). In caso di conflitto compare **Ricarica**: il file viene riletto senza svuotare il modulo, poi si risalva.\n- **Fine settimana.** I campi data delle riunioni chiedono conferma se la data cade di sabato o domenica; \"Cambia data\" svuota il campo.\n- **Pausa pranzo.** Le convocazioni non possono iniziare tra le 12:30 e le 14:00.\n- **Formato dei file.** I file esistenti conservano i fine riga (CRLF) e l'eventuale BOM; i file nuovi sono in UTF-8 con LF. Il frontmatter si aggiorna chiave per chiave, senza riscrivere il resto.\n- **Pagine generate.** Rilasci, Riunioni, Bozze da inviare, Stato invii, Scadenze, Da collaudare e Da firmare in `PO <anno>/` sono prodotte dagli script: le viste dell'app mostrano gli stessi dati, non vanno editate a mano.\n- **Contratto dei dati.** Campi, formati e chi legge/scrive ogni sezione sono descritti in `SCHEMA.md`.\n\n---\n\n## Versione Web: differenze\n\n| Funzione | Python | Web |\n|---|---|---|\n| Lettura di rilasci, resoconti, note, Anagrafica | sì | sì |\n| Modifica scheda, Nuovo punto di piano, Nuova persona | sì | sì |\n| Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza | sì | sì (partecipanti dal team, senza CSV presenze) |\n| Cruscotto con Segna inviato, Chiudi approvazione, collaudo effettivo, lettere | sì | sì |\n| Rigenera .docx, `.msg`, PDF, convocazioni, Carica fonti | sì | no: marcati come superati, li completa il sync del master |\n| Azioni, Sync, Log azioni, Riavvia backend, ricerca Ctrl+K | sì | no |\n| Requisiti | Python 3.12, Outlook/Word/pandoc per le azioni | Edge o Chrome |\n\nNella versione Web ogni scrittura passa dalle stesse regole del codice Python (chiavi cambiate, sezioni cambiate, scadenze a +5 giorni lavorativi, ✅/❌ nella scheda), verificate dagli stessi dati di riferimento.\n";
+
+</script>
+</body>
+</html>

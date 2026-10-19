@@ -1,0 +1,12 @@
+# Artefatti locali dell'app e cache
+.venv/
+__pycache__/
+*.pyc
+azioni.jsonl
+.nicegui/
+Bozze da inviare/
+.sync_pending.json
+.obsidian/workspace.json
+
+# Archivi
+*.zip

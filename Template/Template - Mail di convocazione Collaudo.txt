@@ -1,0 +1,6 @@
+Buongiorno,
+con la presente è convocata la riunione di collaudo relativa al punto di piano ADMXXX-XX-XX – "xxxxxxxxxxxxxxxxxxxx", il giorno mercoledì 15/07/2026 alle ore 10:00.
+Nel corso della riunione saranno eseguite le verifiche previste dal Piano di Test allegato al Documento di Analisi [XX-XX-XX-XX], riguardanti:
+[Sommario dlele verifiche]
+Si invitano i partecipanti a prendere visione del documento di analisi e del piano di test allegati, nonché a verificare preventivamente l'accesso agli ambienti di validazione indicati da Sogei, al fine di agevolare lo svolgimento delle attività di collaudo.
+Saluti

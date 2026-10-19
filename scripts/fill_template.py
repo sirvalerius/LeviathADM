@@ -376,18 +376,18 @@ if __name__ == "__main__":
         "privacy": "DA VERIFICARE",
         "adm_participants": [
             ("(PM) DOTD - ATTUAZIONE PROGETTI E SICUREZZA INFORMATICA", "", "Astolfo Lunardi"),
-            ("(RA) DOTD - GOVERNO E TRANSIZIONE DIGITALE",              "", "Tramontana Urbano"),
-            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Maestrale Cassiopea"),
-            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Isolotto Tiberio"),
-            ("(RB) DGIO",                                               "", "Ciclone Nicodemo"),
-            ("DGIO - Ufficio Territoriale",                             "", "Tramontana Brunilde"),
+            ("(RA) DOTD - GOVERNO E TRANSIZIONE DIGITALE",              "", "Uragano Venusta"),
+            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Nevischio Demetrio"),
+            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Libeccio Urbano"),
+            ("(RB) DGIO",                                               "", "Dirupo Ortensio"),
+            ("DGIO - Ufficio Territoriale",                             "", "Uragano Cassiopea"),
             ("DGIO - Ufficio Antifrode",                                "", "Aquilone Amerigo"),
-            ("DGIO - Ufficio Territoriale",                             "", "Ortensia Amerigo"),
+            ("DGIO - Ufficio Territoriale",                             "", "Pennacchio Brunilde"),
         ],
         "sogei_participants": [
-            "Ciclone Gelsomina",
-            "Alveare Fulgenzio",
-            "Scirocco Ersilia",
+            "Dirupo Ipazia",
+            "Burrasca Gelsomina",
+            "Tramontana Fulgenzio",
         ],
         "obiettivo_testo": (
             "In data 12 maggio 2026 si e svolta la prima riunione di analisi, tenutasi a distanza, "
@@ -406,7 +406,7 @@ if __name__ == "__main__":
             "al flusso sanzionatorio. E emersa la necessita di definire quale tipo di visualizzazione "
             "rendere disponibile agli uffici e quale lavorazione, se prevista, essi debbano effettuare "
             "a fronte dei dati ricevuti. La progettazione dell'interfaccia sara curata da Anna Virginia "
-            "Scirocco (SOGEI) nell'ambito della reingegnerizzazione del SIC.",
+            "Tramontana (SOGEI) nell'ambito della reingegnerizzazione del SIC.",
 
             "Il secondo punto riguarda lo scambio reciproco delle date di controllo tra ADM e Guardia "
             "di Finanza, al fine di evitare che lo stesso esercizio venga sottoposto a verifiche "
@@ -414,26 +414,26 @@ if __name__ == "__main__":
 
             "Il terzo punto riguarda il completamento dell'integrazione con il sistema ARES, controparte "
             "extratributaria del MUV per la parte amministrativa. A differenza del MUV, il servizio con "
-            "ARES e ancora da definire nel flusso di scambio dati. La dottoressa Ciclone ha rappresentato "
+            "ARES e ancora da definire nel flusso di scambio dati. La dottoressa Dirupo ha rappresentato "
             "la necessita di affidare la gestione di ARES a un unico referente per garantire continuita, "
-            "e ha comunicato che si coordinera con il dottor Ortensia e con Gianluca Ciaravola per definire "
+            "e ha comunicato che si coordinera con il dottor Pennacchio e con Gianluca Ciaravola per definire "
             "l'assegnazione.",
 
             "Nel corso del confronto con gli uffici territoriali e emerso che il flusso tributario su "
             "STAMPS non viene attualmente utilizzato, in quanto storicamente giudicato poco praticabile; "
             "le violazioni amministrative vengono invece regolarmente inserite sul SIC e transitate su "
-            "STAMPS. Il dottor Tramontana ha segnalato che l'anello mancante nel ciclo tributario e la "
+            "STAMPS. Il dottor Uragano ha segnalato che l'anello mancante nel ciclo tributario e la "
             "redazione del Processo Verbale di Constatazione (PVC), di competenza dell'ufficio controlli, "
             "che dovrebbe transitare su STAMPS per completare l'iter fino all'atto di accertamento. "
             "Tale criticita, pur non rientrando nell'ambito diretto del presente obiettivo, e stata "
             "rilevata come priorita da affrontare in parallelo.",
         ],
         "azioni_testi": [
-            "Scirocco Ersilia (SOGEI) predisporra una proposta di prototipo per la visualizzazione "
+            "Tramontana Fulgenzio (SOGEI) predisporra una proposta di prototipo per la visualizzazione "
             "dei dati GDF sul SIC entro fine maggio / primi di giugno 2026, previo allineamento interno "
-            "con Alveare Stefano.",
+            "con Burrasca Stefano.",
 
-            "Ciclone Nicodemo (ADM) si coordinera con il dottor Ortensia e Gianluca Ciaravola per "
+            "Dirupo Ortensio (ADM) si coordinera con il dottor Pennacchio e Gianluca Ciaravola per "
             "definire il referente responsabile del sistema ARES e del collegamento SIC-STAMPS per il "
             "flusso tributario.",
 

@@ -62,14 +62,15 @@ Il resoconto si modifica sezione per sezione: partecipanti (selettore con i nomi
 
 ### Dal markdown al Word
 
-- **Rigenera .docx** produce il documento Word ufficiale dal `.md` con il template giusto (startup/analisi/SAL, collaudo con firme o con approvazione telematica) e imposta DATA COMPILAZIONE a oggi. Nella versione Web il `.docx` non si può generare: la bozza viene marcata ⚠️ "docx superato" e il sync del PC master lo rigenera.
-- Il `.msg` (mail con il resoconto allegato) lo genera il **sync** sul PC con Outlook. Non va creato a mano.
+- **Rigenera .docx** produce il documento Word ufficiale dal `.md` con il template giusto (startup/analisi/SAL, collaudo con firme o con approvazione telematica) e imposta DATA COMPILAZIONE a oggi, nel `.md` e nel Word. Il `.msg` precedente, ormai superato, viene eliminato. Funziona in entrambe le versioni: nel browser il Word nasce dallo stesso template, letto dalla cartella `Template/` del vault, e viene scritto accanto al `.md`.
+- **Genera mail** crea la bozza `.msg` con il Word allegato: oggetto, testo dal template di mail (variante telematica per i collaudi con approvazione telematica), destinatari dai partecipanti del resoconto e dal team della scheda (email dall'Anagrafica; chi non ha l'email viene elencato, da aggiungere a mano in Outlook). Nella finestra scegli i PDF della cartella del rilascio da allegare (per il collaudo telematico il documento di analisi con i suoi allegati). Nella versione Python la bozza la compone Outlook stesso, con la firma istituzionale; nel browser il `.msg` è scritto dall'app e porta la firma testuale del template: per quella di Outlook usa Inserisci → Firma prima di inviare. Il `.msg` si apre con doppio clic (versione Python: pulsanti **Apri in Outlook** e **Apri cartella**; Web: **Copia percorso** nell'esito).
+- Se modifichi il `.md` dopo aver generato Word e mail, Bozze da inviare segnala ⚠️ "docx superato": rigenera il Word e poi la mail. Anche il sync (versione Python) rigenera i Word superati.
 
 ### Invio e approvazione tacita
 
 1. Quando la mail è stata inviata davvero, **Segna inviato** (vista "Bozze da inviare"): i file passano in `inviati/`, `inviato: true`, `data_scadenza_approvazione` = +5 giorni lavorativi, ✅ nella scheda.
 2. Alla scadenza senza osservazioni il resoconto è approvato tacitamente: **Chiudi approvazione** registra `data_approvazione`; PDF e mail definitiva li completa il sync del master.
-3. **Segna definitivo inviato** chiude il ciclo (`definitivo_inviato: true`).
+3. **Mail definitiva** (quando il PDF esiste): bozza `.msg` con il template "versione definitiva" e il PDF allegato; poi **Segna definitivo inviato** chiude il ciclo (`definitivo_inviato: true`).
 
 ### Riporta in bozza
 
@@ -124,6 +125,8 @@ La pagina **Azioni** raccoglie le operazioni che lanciano gli script del vault: 
 
 Il pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera i `.msg` mancanti, ricostruisce la cartella locale `Bozze da inviare/`, archivia gli inviati e, sul master, chiude le approvazioni tacite e rigenera i `.docx` superati. **Durante un'azione ogni scrittura dell'app è sospesa** (banner in alto), così nessun file si sposta mentre git lavora. **Log azioni** mostra la cronologia delle esecuzioni.
 
+**Vault senza git.** La versione web e il pack dimostrativo sono strumenti autonomi sul PC di utilizzo: non scrivono mai su git. Se il vault non è un repository git, il sync salta pull e push e fa solo il ricalcolo locale (pagine, Bozze da inviare, archiviazione, `.msg` mancanti con Outlook, PDF con Word).
+
 **Ruoli dei PC.** `scripts/machines.json` assegna a ogni hostname il ruolo master o slave: il master è l'unico che esegue l'automazione mutante; gli slave leggono, scrivono e sincronizzano. **Riavvia backend** (nel menu) riavvia il server in una nuova console.
 
 ---
@@ -147,8 +150,9 @@ Il pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera 
 | Modifica scheda, Nuovo punto di piano, Nuova persona | sì | sì |
 | Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza | sì | sì (partecipanti dal team, senza CSV presenze) |
 | Cruscotto con Segna inviato, Chiudi approvazione, collaudo effettivo, lettere | sì | sì |
-| Rigenera .docx, `.msg`, PDF, convocazioni, Carica fonti | sì | no: marcati come superati, li completa il sync del master |
-| Azioni, Sync, Log azioni, Riavvia backend, ricerca Ctrl+K | sì | no |
-| Requisiti | Python 3.12, Outlook/Word/pandoc per le azioni | Edge o Chrome |
+| Rigenera .docx, Genera mail `.msg`, Mail definitiva | sì | sì (il `.msg` del browser porta la firma del template) |
+| PDF, convocazioni, Carica fonti | sì | no: il PDF lo produce Word dal sync della versione Python |
+| Azioni, Sync, Log azioni, Riavvia backend, ricerca Ctrl+K, Apri in Outlook/Apri cartella | sì | no |
+| Requisiti | Python 3.12, Outlook/Word/pandoc per le azioni | Edge o Chrome (103 o successivi per Word e mail) |
 
 Nella versione Web ogni scrittura passa dalle stesse regole del codice Python (chiavi cambiate, sezioni cambiate, scadenze a +5 giorni lavorativi, ✅/❌ nella scheda), verificate dagli stessi dati di riferimento.

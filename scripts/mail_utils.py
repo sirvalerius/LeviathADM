@@ -88,14 +88,14 @@ def get_email(name: str) -> str:
         if len(parts) >= 2:
             # Derivazione ADM: nome.cognome@adm.gov.it
             if org == "ADM":
-                # "Vortice Zaccaria" → zaccaria.vortice@adm.gov.it
-                # "Isolotto Tiberio" → tiberio.isolotto@adm.gov.it
+                # "Zenit Amerigo" → amerigo.zenit@adm.gov.it
+                # "Libeccio Urbano" → urbano.libeccio@adm.gov.it
                 cognome = parts[0].lower()
                 nomi = [p.lower() for p in parts[1:]]
                 return f"{'.'.join(nomi)}.{cognome}@adm.gov.it"
             # Derivazione SOGEI: {iniziale_nome}{cognome}@sogei.it
             if org == "SOGEI":
-                # "Foschia Fulgenzio" → fbonifazi@sogei.it
+                # "Grecale Gelsomina" → fbonifazi@sogei.it
                 cognome = parts[0].lower()
                 iniziale = parts[1][0].lower()
                 return f"{iniziale}{cognome}@sogei.it"
@@ -133,7 +133,7 @@ def team_from_release(text: str) -> dict[str, list[str]]:
             continue
         for role in ("PM", "RA", "RP", "RB"):
             if f"({role})" in ruolo_up or ruolo_up.startswith(role):
-                # RP può essere "Maestrale - Isolotto": cerco i nomi completi
+                # RP può essere "Nevischio - Libeccio": cerco i nomi completi
                 if " - " in nome_cell or " – " in nome_cell:
                     for cognome in re.split(r"\s*[-–]\s*", nome_cell):
                         cognome = cognome.strip()
@@ -152,7 +152,7 @@ def team_from_release(text: str) -> dict[str, list[str]]:
             p = _anagrafica_by_surname(surname)
             result["RB"] = [p.stem if p else nome]
 
-    # Riga SOGEI: **SOGEI:** Quadrante Romualdo (referente), Dirupo Tiberio, ...
+    # Riga SOGEI: **SOGEI:** Rugiada Sigismonda (referente), Estuario Urbano, ...
     m = re.search(r"\*\*SOGEI:\*\*\s*(.+)", text)
     if m:
         for part in m.group(1).split(","):

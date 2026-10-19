@@ -9,9 +9,10 @@ progetti e rilasci sono fittizi (lotterie lunari, dazi sui dirigibili, accise su
 2. apri http://127.0.0.1:8080 nel browser (`leviathadm.cmd --porta 8090` per un'altra porta).
 
 Il PC è configurato come **slave** (`scripts/machines.json`): le viste e le scritture funzionano tutte;
-le azioni che richiedono Word (PDF) o pandoc restano disabilitate se i programmi mancano. Nel pack
-**Sync, audit invii e organizzazione delle cartelle Outlook sono sostituiti da segnaposto** che escono
-subito: il pack non è un repository git e non deve mai toccare una casella di posta reale.
+le azioni che richiedono Word (PDF) o pandoc restano disabilitate se i programmi mancano. Il pack non è un
+repository git: il pulsante **Sync** fa solo il ricalcolo locale (pagine, Bozze da inviare, archiviazione,
+`.msg` mancanti se c'è Outlook) senza pull né push. **Audit invii e organizzazione delle cartelle Outlook
+sono sostituiti da segnaposto** che escono subito: il pack non deve mai toccare una casella di posta reale.
 
 ## Versione Web (nessuna dipendenza)
 

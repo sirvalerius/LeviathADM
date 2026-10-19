@@ -94,7 +94,7 @@ def copia_codice(dest: Path) -> None:
     (dest / "scripts").mkdir()
     for p in (REPO / "scripts").glob("*.py"):
         shutil.copy2(p, dest / "scripts" / p.name)
-    for nome in STUB:   # git e Outlook reali non si toccano mai dal pack
+    for nome in STUB:   # la casella Outlook reale non si tocca mai dal pack
         (dest / "scripts" / nome).write_text(
             f'"""{nome}: non disponibile nel pack demo (niente git/Outlook)."""\nimport sys\n'
             f'sys.exit("{nome} non e\' disponibile nel pack demo")\n', encoding="utf-8")
@@ -155,7 +155,7 @@ if exist python\\python.exe (
 )
 if errorlevel 1 pause
 """
-STUB = ("sync.py", "audit_invii.py", "organizza_cartelle_progetti.py")
+STUB = ("audit_invii.py", "organizza_cartelle_progetti.py")   # sync.py resta: senza git fa il ricalcolo locale
 
 README = """# LeviathADM — pack demo
 
@@ -168,9 +168,10 @@ progetti e rilasci sono fittizi (lotterie lunari, dazi sui dirigibili, accise su
 2. apri http://127.0.0.1:8080 nel browser (`leviathadm.cmd --porta 8090` per un'altra porta).
 
 Il PC è configurato come **slave** (`scripts/machines.json`): le viste e le scritture funzionano tutte;
-le azioni che richiedono Word (PDF) o pandoc restano disabilitate se i programmi mancano. Nel pack
-**Sync, audit invii e organizzazione delle cartelle Outlook sono sostituiti da segnaposto** che escono
-subito: il pack non è un repository git e non deve mai toccare una casella di posta reale.
+le azioni che richiedono Word (PDF) o pandoc restano disabilitate se i programmi mancano. Il pack non è un
+repository git: il pulsante **Sync** fa solo il ricalcolo locale (pagine, Bozze da inviare, archiviazione,
+`.msg` mancanti se c'è Outlook) senza pull né push. **Audit invii e organizzazione delle cartelle Outlook
+sono sostituiti da segnaposto** che escono subito: il pack non deve mai toccare una casella di posta reale.
 
 ## Versione Web (nessuna dipendenza)
 

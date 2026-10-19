@@ -34,7 +34,7 @@ def _email_to_nome(email: str) -> str | None:
     Restituisce None se il pattern non è riconoscibile.
     """
     local = email.split("@")[0].lower()
-    # gestisce anche albertogiacomo.orellana → Tiberio Isolotto
+    # gestisce anche albertogiacomo.orellana → Urbano Libeccio
     parts = local.replace(".", " ").split()
     if len(parts) >= 2:
         return " ".join(p.title() for p in parts)
@@ -223,7 +223,7 @@ def update_from_presenze(presenze: dict) -> dict[str, list[str]]:
         email = p.get("email", "")
 
         # Controlla se esiste già una scheda con nome invertito (Cognome Nome)
-        # Es. "Amerigo Ortensia" → prova "Ortensia Amerigo"
+        # Es. "Brunilde Pennacchio" → prova "Pennacchio Brunilde"
         parts = nome.split()
         inverted = " ".join(reversed(parts)) if len(parts) >= 2 else None
         if inverted and (ANAGRAFICA / f"{inverted}.md").exists():

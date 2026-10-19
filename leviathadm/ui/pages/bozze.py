@@ -2,7 +2,7 @@
 from __future__ import annotations
 from nicegui import ui
 
-from leviathadm.ui import state
+from leviathadm.ui import apri, state
 from leviathadm.ui.shell import shell
 from leviathadm.vault import cruscotto as C
 from leviathadm.vault import writers
@@ -61,6 +61,9 @@ def _riga_bozza(idx, b: dict) -> None:
                     ricarica=[b['path'], b['path'].parent / f"{b['path'].parent.name}.md"],
                     ok='Resoconto archiviato in inviati/.'))).props('unelevated color=orange-9')
                 ui.button('Annulla', on_click=d.close).props('flat')
+        if b['has_msg'] and apri.file_mail(b['path']):
+            ui.button('Apri in Outlook', icon='mail', on_click=lambda m=apri.file_mail(b['path']): apri.apri_in_outlook(m)).props('dense outline')
+        ui.button('Apri cartella', icon='folder_open', on_click=lambda p=b['path']: apri.apri_cartella(p)).props('dense flat')
         ui.button('Segna inviato', icon='send', on_click=d.open).props('dense outline')
 
 
@@ -129,6 +132,9 @@ def render_bozze() -> None:
                     ui.label(f"{x['codice']} · {x['tipo']} · {x['data']} · approvato {x['scadenza']} · "
                              f".msg {'✅' if x['has_msg'] else '❌'} · .pdf {'✅' if x['has_pdf'] else '❌'}") \
                         .classes('text-sm text-slate-600 font-mono')
+                    if x['has_msg'] and apri.file_mail(x['path'], definitivo=True):
+                        ui.button('Apri in Outlook', icon='mail', on_click=lambda _, m=apri.file_mail(x['path'], definitivo=True): apri.apri_in_outlook(m)).props('dense outline')
+                    ui.button('Apri cartella', icon='folder_open', on_click=lambda _, p=x['path']: apri.apri_cartella(p)).props('dense flat')
                     ui.button('Segna definitivo inviato', icon='done_all', on_click=lambda _, x=x: _esegui(
                         writers.segna_definitivo_inviato, x['path'], x['mtime_ns'],
                         ricarica=[x['path']], ok='Definitivo segnato come inviato.')).props('dense outline')

@@ -85,6 +85,19 @@ def find_pending() -> list[Path]:
     return results
 
 
+def corpo_definitivo(tipo_display: str, data_riu_it: str, appr_it: str, scadenza_it: str,
+                     template: str | None = None) -> str:
+    """Corpo della mail 'versione definitiva' dal template; la firma testuale la aggiunge Outlook."""
+    body = ((TEMPLATE_DEFINITIVA.read_text(encoding="utf-8") if template is None else template)
+            .replace("{{TIPO}}", tipo_display)
+            .replace("{{DATA_RIUNIONE}}", data_riu_it)
+            .replace("{{DATA_APPROVAZIONE}}", appr_it)
+            .replace("{{DATA_SCADENZA}}", scadenza_it))
+    if "\nSaluti" in body:
+        body = body[:body.index("\nSaluti") + len("\nSaluti")] + "\n"
+    return body
+
+
 def chiudi(md_path: Path) -> None:
     today = date.today()
     today_str = today.isoformat()
@@ -137,15 +150,7 @@ def chiudi(md_path: Path) -> None:
     print(f"    PDF generato: {pdf_path.name}")
 
     # 4. Mail versione definitiva
-    template = TEMPLATE_DEFINITIVA.read_text(encoding="utf-8")
-    body = (template
-            .replace("{{TIPO}}", tipo_display)
-            .replace("{{DATA_RIUNIONE}}", data_riu_it)
-            .replace("{{DATA_APPROVAZIONE}}", appr_it)
-            .replace("{{DATA_SCADENZA}}", scadenza_it))
-    # Mantiene "Saluti" ma scarta la firma testuale: la aggiunge Outlook
-    if "\nSaluti" in body:
-        body = body[:body.index("\nSaluti") + len("\nSaluti")] + "\n"
+    body = corpo_definitivo(tipo_display, data_riu_it, appr_it, scadenza_it)
 
     subject = f"[{codice}] Resoconto {tipo_display} del {data_riu_dmy} — versione definitiva"
 

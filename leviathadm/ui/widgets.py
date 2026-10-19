@@ -248,7 +248,7 @@ def dialogo_nuova_persona(idx, on_creata=None) -> ui.dialog:
 
 def campo_persona(label: str, value: str, persone: list[str], *, idx=None, classes: str = 'w-64') -> ui.select:
     """Campo per un nome di persona: suggerimenti dall'Anagrafica, ma accetta anche testo libero
-    (es. 'Maestrale - Isolotto' per due RP). Si legge con .value come una ui.input.
+    (es. 'Nevischio - Libeccio' per due RP). Si legge con .value come una ui.input.
     Con idx, l'icona a destra apre "Nuova persona": la scheda viene creata e il nome selezionato."""
     opzioni = sorted(set(persone) | ({value} if value else set()))
     sel = ui.select(opzioni, value=value or None, label=label, with_input=True, new_value_mode='add-unique',) \

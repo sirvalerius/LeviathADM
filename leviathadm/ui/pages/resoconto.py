@@ -2,7 +2,7 @@
 from __future__ import annotations
 from nicegui import run, ui
 
-from leviathadm.ui import state
+from leviathadm.ui import apri, state
 from leviathadm.ui.shell import shell, vai
 from leviathadm.vault import resoconti as R
 from leviathadm.vault import writers
@@ -98,6 +98,10 @@ def render_resoconto(nid: str) -> None:
                 # Rigenera solo su bozze con sezioni: su un archiviato altererebbe l'archivio (regola di rettifica),
                 # su un export docx2md produrrebbe un Word vuoto sopra quello ufficiale
                 ui.button('Rigenera .docx', icon='description', on_click=rigenera).props('outline')
+            mail = apri.file_mail(doc.path)
+            if mail:
+                ui.button('Apri in Outlook', icon='mail', on_click=lambda m=mail: apri.apri_in_outlook(m)).props('outline')
+            ui.button('Apri cartella', icon='folder_open', on_click=lambda p=doc.path: apri.apri_cartella(p)).props('flat')
             ui.button('Nota grezza', icon='code', on_click=lambda: vai(f'/nota/{nid}')).props('flat')
         presenti = [e for e in ('.docx', '.msg', '.pdf') if doc.path.with_suffix(e).exists()]
         with ui.row().classes('items-center gap-3 text-xs text-slate-500'):

@@ -7,7 +7,7 @@ from . import paths as _paths
 
 MODULI_SCRIPT = ("mail_utils", "build_scadenze", "build_bozze", "build_da_collaudare", "build_da_firmare",
                  "build_stato_invii", "chiudi_approvazione", "archivia_inviati", "prepara_firma", "update_anagrafica",
-                 "parse_presenze", "genera_convocazione", "build_project_pages", "build_rilasci", "build_riunioni")
+                 "parse_presenze", "genera_convocazione", "build_project_pages", "build_rilasci", "build_riunioni", "sync_bozze_folder")
 _ROOT_ATTUALE: Path = _paths._REPO_ROOT
 
 

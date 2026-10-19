@@ -43,8 +43,8 @@ DIREZIONI_CENTRALI = {
             ("Apparecchi da intrattenimento", "Elisabetta POSO"),
             ("Bingo", "Maria Rosaria MEOLA"),
             ("Gioco a distanza e scommesse", "Antonio GIULIANI"),
-            ("Giochi numerici e lotterie", "Ersilia Aquilone"),
-            ("Controlli giochi", "Ersilia Ortensia"),
+            ("Giochi numerici e lotterie", "Fulgenzio Brezza"),
+            ("Controlli giochi", "Fulgenzio Pennacchio"),
         ],
     },
     "DDOG": {
@@ -53,9 +53,9 @@ DIREZIONI_CENTRALI = {
         "uffici": [
             ("Disciplina risorse proprie e altri diritti doganali", "Giovanni MUNGIOLI"),
             ("AEO, compliance e grandi imprese", "Loredana SASSO"),
-            ("Tariffa e classificazione", "Sabrina ESTUARIO"),
+            ("Tariffa e classificazione", "Sabrina FOSCHIA"),
             ("Origine e valore", "Anna MAIELLO"),
-            ("Regimi e procedure doganali", "Marlene BREZZA"),
+            ("Regimi e procedure doganali", "Marlene CICLONE"),
             ("Controlli dogane", "Antonella BIANCHI"),
             ("Autorizzazioni temporanee e settore agricolo", "Augusto ZUCARO"),
         ],
@@ -79,7 +79,7 @@ DIREZIONI_CENTRALI = {
         "uffici": [
             ("Governo e transizione digitale", "Stefano BARGIOTTI"),
             ("Analisi e processi", "Antonino SPEZIALE"),
-            ("Attuazione progetti e sicurezza informatica", "Leopoldo Libeccio"),
+            ("Attuazione progetti e sicurezza informatica", "Marzia Maestrale"),
             ("Dati e gestione sistemi IT", "Luigi VOLPE"),
         ],
     },
@@ -99,7 +99,7 @@ DIREZIONI_CENTRALI = {
         "uffici": [
             ("Contabilità", "Vincenzo FUSCO"),
             ("Tesoreria", "Laura D'AMATO"),
-            ("Acquisti e contratti", "Giuliano ESTUARIO"),
+            ("Acquisti e contratti", "Giuliano FOSCHIA"),
             ("Logistica", "Marco LOREFICE"),
             ("Sicurezza sul lavoro", "Francesco CORTESE"),
         ],
@@ -158,7 +158,7 @@ DIREZIONI_TERRITORIALI = [
 
 
 def cognome_nome(nome_sito: str) -> str:
-    """'Ersilia Aquilone' -> 'Aquilone Ersilia' (convenzione Anagrafica)."""
+    """'Fulgenzio Brezza' -> 'Brezza Fulgenzio' (convenzione Anagrafica)."""
     tokens = nome_sito.split()
     cognome = [t.title() for t in tokens if t.isupper() and len(t) > 1]
     nome = [t for t in tokens if not (t.isupper() and len(t) > 1)]

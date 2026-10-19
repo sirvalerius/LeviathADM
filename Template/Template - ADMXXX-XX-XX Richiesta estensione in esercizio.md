@@ -29,7 +29,7 @@ Del rilascio si informa l'Ufficio in conoscenza per eventuali conseguenti comuni
   -----------------------------------------------------------------------
                                             [Il Dirigente]{.smallcaps}
   -------------------------------------- --------------------------------
-                                           [Leopoldo Libeccio]{.smallcaps}
+                                           [Marzia Maestrale]{.smallcaps}
 
                                              **Firmato digitalmente**
   -----------------------------------------------------------------------

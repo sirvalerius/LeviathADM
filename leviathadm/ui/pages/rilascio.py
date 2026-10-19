@@ -160,7 +160,7 @@ def render_rilascio(codice: str) -> None:
                     if res.path.parent.name == 'inviati':
                         ui.label('Inviato: sola lettura. Per correggerlo usa "Riporta in bozza" nella pagina del resoconto.')
                     elif bloccato:
-                        ui.label('Aquilone sezioni standard: modificabile solo come nota grezza.')
+                        ui.label('Brezza sezioni standard: modificabile solo come nota grezza.')
                     else:
                         ui.label('Bozza: campi modificabili.')
                     ui.link('Apri pagina', f'/resoconto/{nid}').classes('text-sm text-blue-900')
@@ -184,6 +184,8 @@ def render_rilascio(codice: str) -> None:
                 pulsante_azione(A.CATALOGO['mail_resoconto'], {'codice': r.codice}, rilascio=r.codice,
                                 files_rilascio=lambda g, r=r: files_rilascio(r, g))
                 pulsante_azione(A.CATALOGO['prepara_firma'], {'codice': r.codice}, rilascio=r.codice)
+                from leviathadm.ui import apri
+                ui.button('Apri cartella', icon='folder_open', on_click=lambda p=r.path: apri.apri_cartella(p)).props('dense flat')
             ui.label('Le convocazioni sono bozze .eml da aprire e inviare; la mail resoconto è una bozza .msg (Outlook). '
                      'Nessuna mail viene inviata dall\'app.').classes('text-xs text-slate-500')
 

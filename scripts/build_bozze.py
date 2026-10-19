@@ -33,7 +33,7 @@ def _fmt_date(iso: str) -> str:
 
 def docx_superato(md: Path) -> bool:
     """True se il .md è stato modificato dopo il .docx (es. dalla versione web, che non può rigenerarlo):
-    il Word allegato alla mail sarebbe vecchio. Aquilone .docx non c'è nulla da rigenerare."""
+    il Word allegato alla mail sarebbe vecchio. Brezza .docx non c'è nulla da rigenerare."""
     docx = md.with_suffix(".docx")
     return docx.exists() and md.stat().st_mtime > docx.stat().st_mtime + 1
 

@@ -61,7 +61,7 @@ Il collaudo ha avuto esito **POSITIVO**.
   -----------------------------------------------------------------------
                                             [Il Dirigente]{.smallcaps}
   -------------------------------------- --------------------------------
-                                           [Leopoldo Libeccio]{.smallcaps}
+                                           [Marzia Maestrale]{.smallcaps}
 
                                              **Firmato digitalmente**
   -----------------------------------------------------------------------

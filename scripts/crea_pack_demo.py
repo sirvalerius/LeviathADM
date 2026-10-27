@@ -107,6 +107,7 @@ def copia_codice(dest: Path) -> None:
         if p.suffix in (".docx", ".txt", ".md") and "Tabella profili" not in p.name:
             shutil.copy2(p, dest / "Template" / p.name)
     shutil.copytree(REPO / "Template" / "markdown", dest / "Template" / "markdown")
+    shutil.copytree(REPO / "Template" / "copilot", dest / "Template" / "copilot")   # 2.0: prompt e istruzioni dell'agente Copilot
     (dest / "scripts" / "machines.json").write_text(
         json.dumps({"default_role": "slave", "machines": {}}, indent=2) + "\n", encoding="utf-8")
     (dest / "avvia_demo.py").write_text(AVVIA_DEMO, encoding="utf-8")
@@ -336,6 +337,18 @@ def genera_vault(root: Path, oggi: date) -> None:
                                  f"- [ ] [[Pulsar Tancredi]] — confermare il perimetro dei dati storici — scadenza: {it(oggi)}",
                                  "- [x] [[Dirigibile Anselmo]] — fornire i profili utente"])
     sezione(s, "Prossima riunione", [f"SAL #3 — {it(lavorativo(g(20)))} ore 15:00"])
+    # 2.0: proposta dell'agente Copilot per il prossimo SAL (Nuova riunione con quella data → "Importa da Copilot")
+    import proposta_copilot
+    d3 = lavorativo(g(20))
+    pp = proposta_copilot.percorso_proposta(po / "ADM904-01-0A", d3.isoformat(), "SAL #3")
+    pp.parent.mkdir(parents=True, exist_ok=True)
+    _w(pp, f"---\ntipo: proposta_copilot\ncodice_rilascio: ADM904-01-0A\ndata_riunione: {d3.isoformat()}\nfase: SAL #3\nfonte: Recap Teams\n"
+           f"generato: {oggi.isoformat()}\nagente: Resoconti PO 2026\n---\n\n## PARTECIPANTI\n**ADM**: Mongolfieri Ruggero; Zefiro Baldassarre\n**SOGEI**: Pulsar Tancredi\n\n"
+           "## ARGOMENTI TRATTATI\n\nSOGEI ha presentato il cruscotto rilasciato in ambiente di validazione e ha illustrato le anagrafiche delle caldaie caricate; "
+           "ADM ha verificato la coerenza dei totali con i dati storici.\n\nIl business ha chiesto di aggiungere il filtro per provincia; SOGEI ha stimato l'attività "
+           "senza impatto sulla data di messa in esercizio.\n\n## AZIONI CONCORDATE\n- SOGEI — aggiungere il filtro per provincia — scadenza: "
+           f"{it(lavorativo(g(34)))}\n- RA — confermare il perimetro dei dati storici — scadenza: non indicata\n\n## NOTE PER IL PM\n"
+           "- Non è chiaro se il filtro per provincia rientri nell'effort approvato: da confermare con l'RA.\n")
     # 6. In corso, confluito: Prima Analisi approvata, definitivo da inviare
     s = scheda("ADM904-02-0B", "Monitoraggio delle scommesse sulle regate di dirigibili", "Lanterna Costanza",
                "Alambicco Ildebrando", "Bussola Ermenegilda", "DGLL", "Aurora Domitilla", "In corso", g(80), g(110),

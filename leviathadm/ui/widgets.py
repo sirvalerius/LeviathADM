@@ -137,6 +137,10 @@ class TextareaAnteprima:
     def valore(self) -> str:
         return (self._ta.value or "").strip("\n")
 
+    def imposta(self, testo: str) -> None:
+        self._ta.value = testo
+        self._agg(testo)
+
 
 import re as _re
 from datetime import date as _date

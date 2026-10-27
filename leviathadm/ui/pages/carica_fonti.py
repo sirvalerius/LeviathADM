@@ -28,6 +28,9 @@ def processa(idx: VaultIndex, r: Rilascio, data_iso_: str, fase_tab: str, files:
             continue
         msg.append(f"{nome}: {e.stato}")
         suf = e.path.suffix.lower()
+        if suf == ".md" and F.e_proposta(e.path):
+            msg.append(f"{nome}: proposta Copilot salvata (usala con \"Importa da Copilot\" nel nuovo resoconto)")
+            continue
         if suf in (".docx", ".vtt", ".md"):
             try:
                 md = F.converti_trascritto(e.path, deps=deps)

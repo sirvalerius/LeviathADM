@@ -45,6 +45,17 @@ def salva_fonte(rilascio_dir: Path, data_iso: str, fase_tab: str, nome: str, dat
     return Esito("salvato", dest)
 
 
+def e_proposta(path: Path) -> bool:
+    """True se è un .md con `tipo: proposta_copilot` (Proposta Copilot: non è un trascritto)."""
+    try:
+        if Path(path).suffix.lower() != ".md" or not Path(path).exists():
+            return False
+        from mail_utils import parse_frontmatter
+        return parse_frontmatter(Path(path).read_text(encoding="utf-8").lstrip("\ufeff")).get("tipo", "").strip() == "proposta_copilot"
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
 def converti_trascritto(path: Path, *, deps: set[str]) -> Path | None:
     """.vtt → .md (stdlib); .docx → .md via convert.docx_to_md (pandoc: se manca, None); .md → se stesso."""
     suf = path.suffix.lower()

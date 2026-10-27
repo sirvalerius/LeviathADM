@@ -95,6 +95,31 @@ Posizione: root del rilascio finché non inviato, poi `inviati/`.
 
 Sezioni body: `OBIETTIVO`, `LISTA PARTECIPANTI`, `OBIETTIVO DELLA RIUNIONE`, `ARGOMENTI TRATTATI`, `AZIONI CONCORDATE` (o `ESITO` per il collaudo — è ciò da cui `rigenera_resoconto.py` riconosce il tipo).
 
+## Proposta Copilot — `ADMxxx-xx-xX/_fonti/<AAAAMMGG Fase>/Proposta Copilot.md` (dal 2026-10-27, LeviathADM 2.0)
+
+Le sezioni "di giudizio" del resoconto (ARGOMENTI TRATTATI, AZIONI CONCORDATE) scritte da un agente Copilot 365 che legge
+il trascritto Teams sulla raccolta SharePoint del vault, oppure incollate dall'utente nel modulo Nuovo resoconto. Non è un
+trascritto: "Carica fonti" la salva senza convertirla né toccare la riga Riunioni. LeviathADM la importa nello scheletro
+("Importa da Copilot", mai per il collaudo); il resoconto resta l'unico documento ufficiale. Parser: `scripts/proposta_copilot.py`
+e `LV.proposta` (golden `proposta_copilot`).
+
+| Campo frontmatter | Formato | Scritto da |
+|---|---|---|
+| `tipo` | `proposta_copilot` (obbligatorio per riconoscerla; senza frontmatter vale solo nella cartella canonica) | agente / LeviathADM (`componi_proposta`, proposta incollata) |
+| `codice_rilascio`, `data_riunione`, `fase` | `ADMxxx-xx-xX`, ISO, fase come in `## Riunioni` (`SAL #2`; confronto senza `#` e maiuscole) | agente / LeviathADM — se discordano dalla riunione, la proposta è ignorata con avviso |
+| `fonte` | nome del trascritto, `Recap Teams` o `incollata` | agente / LeviathADM |
+| `generato` | ISO | agente / LeviathADM |
+| `agente` | nome dell'agente (facoltativo) | agente |
+
+Sezioni body (intestazioni `##` senza distinzione di maiuscole, `:` finale ammesso; bullet `-`, `*` o `•`; BOM e CRLF tollerati):
+`PARTECIPANTI` (facoltativa: righe `**ADM**: Cognome Nome; …` e `**SOGEI**: …` — usati solo senza CSV presenze, con la nota di lista
+incompleta e senza stub Anagrafica), `ARGOMENTI TRATTATI` (prosa), `AZIONI CONCORDATE` (una riga per azione: `Responsabile — azione —
+scadenza: …`), `NOTE PER IL PM` (dubbi e dati mancanti: mostrati come avvisi, **mai copiati nel resoconto**).
+
+Prompt di fallback (chat di Copilot senza agente): `Template/copilot/Prompt resoconto.txt` con i segnaposto `{{PIANO}}`, `{{CODICE}}`,
+`{{DESCRIZIONE_RILASCIO}}`, `{{FASE}}`, `{{DATA}}`, `{{PERCORSO_TRASCRITTO}}`, `{{PERCORSO_PROPOSTA}}` (il trascritto è citato per
+percorso, mai incollato). Istruzioni dell'agente Copilot Studio: `Template/copilot/Istruzioni agente Resoconti.md`.
+
 ## Verbale di collaudo — `ADMxxx-xx-xX - AAAAMMGG Verbale di Collaudo.md`
 
 Generato da `genera_convocazione_collaudo`; campo chiave `esito_collaudo` (`POSITIVO` / `con riserva` / `NEGATIVO`) + sezione Esito complessivo.

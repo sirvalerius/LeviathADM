@@ -65,6 +65,12 @@ Dallo step **+** del ciclo di vita (o dal pulsante "Nuovo resoconto" nella versi
 
 Se nella cartella del rilascio c'è il **CSV presenze di Teams** con la data della riunione (caricato con "Carica fonti"), la LISTA PARTECIPANTI nasce dai presenti veri (ruoli PM/RA/RP/RB riconosciuti dal team della scheda, referente SOGEI per primo) e i presenti nuovi ricevono una scheda in Anagrafica; altrimenti dal team della scheda, con la nota "[lista incompleta — integrare con report presenze Teams]". Nell'editor il pulsante **Importa CSV presenze** sostituisce le liste ADM e SOGEI con quelle del CSV della data del resoconto.
 
+### Resoconto con Copilot 365 (dalla 2.0)
+
+Dove c'è Copilot 365 e non Claude Code, la prima stesura di ARGOMENTI TRATTATI e AZIONI CONCORDATE la scrive un **agente Copilot** (istruzioni in `Template/copilot/Istruzioni agente Resoconti.md`: conoscenza = raccolta SharePoint del vault, azione = "Crea file"). L'agente legge il trascritto Teams e salva `Proposta Copilot.md` in `_fonti/AAAAMMGG <Fase>/` del rilascio (frontmatter con codice, data e fase; sezioni PARTECIPANTI, ARGOMENTI TRATTATI, AZIONI CONCORDATE, NOTE PER IL PM). Dopo il sync la proposta è nel vault locale.
+
+Nel modulo **Nuova riunione**, se per data e fase scelte c'è una proposta, compare la casella "Importa da Copilot (generata il …)": lo scheletro nasce con argomenti e azioni già compilati (i partecipanti della proposta contano solo senza CSV presenze, con la nota di lista incompleta) e le NOTE PER IL PM arrivano come avvisi, mai nel resoconto. Ciclone agente: **Copia prompt per Copilot** mette negli appunti (e mostra) il prompt di `Template/copilot/Prompt resoconto.txt` con codice, fase, data e il percorso del trascritto; la risposta si incolla nel campo "Proposta": viene salvata in `_fonti/` con il frontmatter generato e usata subito. Nell'**editor** il pulsante "Importa da Copilot" sostituisce le due sezioni, dopo conferma, con la proposta della stessa data e fase. Una proposta di un'altra riunione (frontmatter discordante) è ignorata con avviso; per il **collaudo** la proposta non si usa mai (struttura fissa). "Carica fonti" riconosce il file (`tipo: proposta_copilot`) e lo salva senza trattarlo come trascritto. Il resoconto resta l'unico documento ufficiale: si rilegge e si corregge come sempre.
+
 ### Carica fonti
 
 Dal dettaglio del rilascio (o dal modulo Nuova riunione, "Carica fonti prima"): data, fase e uno o più file — trascritti `.docx`/`.md`/`.vtt`, il CSV presenze scaricato da Teams (col suo nome originale: contiene la data), PDF. I file vanno in `_fonti/AAAAMMGG <Fase>/` del rilascio; i `.docx` e i `.vtt` vengono convertiti in `.md` (nella versione Python con pandoc, nella Web con il lettore Word dell'app: stesso testo, senza pandoc); il CSV aggiorna l'Anagrafica (schede nuove, email mancanti); il primo trascritto entra nella riga `## Riunioni` se la colonna è vuota. Per ogni file compare l'esito: salvato, identico (già presente uguale), conflitto (esiste con contenuto diverso: "Sovrascrivi" per forzare), rifiutato (estensione non ammessa o oltre 200 MB). Se il resoconto di quella riunione esiste già in bozza, un link apre l'editor con le presenze importate (da salvare).
@@ -174,6 +180,7 @@ Il pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera 
 | Lettura di rilasci, resoconti, note, Anagrafica | sì | sì |
 | Modifica scheda, Nuovo punto di piano, Nuova persona | sì | sì |
 | Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza, partecipanti dal CSV presenze | sì | sì |
+| Resoconto con Copilot 365 (Importa da Copilot, proposta incollata, Copia prompt) | sì | sì |
 | Carica fonti (trascritti → `.md`, CSV presenze → Anagrafica, riga Riunioni), protocolli in Modifica scheda | sì | sì (i `.docx` convertiti dall'app, senza pandoc) |
 | Cruscotto con Segna inviato, Chiudi approvazione, collaudo effettivo, lettere | sì | sì |
 | Rigenera .docx, Genera mail `.msg`, Mail definitiva | sì | sì (il `.msg` del browser porta la firma del template) |

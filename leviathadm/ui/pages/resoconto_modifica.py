@@ -15,6 +15,7 @@ from leviathadm.vault import resoconti as R
 from leviathadm.vault import writers
 from mail_utils import team_from_release
 from parse_presenze import parse_presenze_csv
+import proposta_copilot as PC
 
 FLAG = ["VINCOLI NORMATIVI", "VARIAZIONE DATE PREVISTE", "VARIAZIONE EFFORT", "PRIVACY"]
 _DATA_IT_RE = re.compile(r"\d{2}/\d{2}/\d{4}")
@@ -103,6 +104,7 @@ def editor_resoconto(idx, nid: str, *, dopo_salva: Callable[[], None], annulla: 
             ui.label('; '.join(doc.problemi)).classes('text-xs text-amber-800')
         getter: dict[str, Callable[[], str]] = {}       # heading → nuovo inner
         fm_inputs: dict[str, ui.input] = {}
+        wref: dict[str, object] = {}                     # widget di ARGOMENTI/AZIONI per "Importa da Copilot"
         persone = sorted((n for n in idx.note.values() if n.tipo == 'persona'), key=lambda n: n.titolo)
         fm_tot = {**(r.frontmatter if r else {}), **doc.frontmatter}
 
@@ -166,11 +168,39 @@ def editor_resoconto(idx, nid: str, *, dopo_salva: Callable[[], None], annulla: 
                 elif s.heading in R.SEZIONI_TESTO:
                     w = TextareaAnteprima(s.inner, label=s.heading.title())
                     getter[s.heading] = (lambda w=w: w.valore)
+                    wref[s.heading] = w
                 elif s.heading == 'AZIONI CONCORDATE':
                     lr = ListaRighe(doc.azioni, label='azione', placeholder='Responsabile — cosa — entro quando')
                     getter[s.heading] = (lambda lr=lr: R.ser_azioni(lr.valori))
+                    wref[s.heading] = lr
                 elif s.heading == 'ESITO':
                     getter[s.heading] = _editor_esito(doc, r)
+
+        if 'ARGOMENTI TRATTATI' in wref and doc.frontmatter.get('tipo_riunione', '') != 'Collaudo':
+            def importa_copilot() -> None:
+                d_iso = (doc.frontmatter.get('data_riunione') or '').strip()
+                p = PC.trova_proposta(doc.path.parent, d_iso, R.fase_tabella(doc.frontmatter.get('tipo_riunione', '')))
+                if p is None:
+                    ui.notify('Nessuna Proposta Copilot per questa riunione in _fonti/ (data e fase del resoconto).', type='warning')
+                    return
+                prop = PC.parse_proposta(p.read_text(encoding='utf-8'))
+
+                def applica() -> None:
+                    wref['ARGOMENTI TRATTATI'].imposta(prop['argomenti'])
+                    if 'AZIONI CONCORDATE' in wref:   # entrambe le sezioni sostituite, come dice la conferma
+                        wref['AZIONI CONCORDATE'].sostituisci(prop['azioni'])
+                    for n in prop['note']:
+                        ui.notify(f'Copilot: {n}', type='warning', close_button=True, timeout=8000)
+                    dc.close()
+                    ui.notify(f'Importato da {p.name}: rileggi e poi Salva.', type='positive')
+                with ui.dialog() as dc, ui.card():
+                    ui.label(f'Sostituire ARGOMENTI TRATTATI e AZIONI CONCORDATE con la proposta {p.relative_to(doc.path.parent).as_posix()}?')
+                    with ui.row().classes('gap-3'):
+                        ui.button('Sostituisci', on_click=applica).props('unelevated')
+                        ui.button('Annulla', on_click=dc.close).props('flat')
+                dc.open()
+            ui.button('Importa da Copilot', icon='smart_toy', on_click=importa_copilot).props('outline dense') \
+                .tooltip('Proposta Copilot in _fonti/ per data e fase di questo resoconto')
 
         with ui.card().classes('w-full lv-card shadow-none'):
             ui.label('Aggiungi sezione').classes('font-bold text-slate-700')

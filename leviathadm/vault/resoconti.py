@@ -471,16 +471,25 @@ def _si_no(valore: str) -> str:
 
 def crea_scheletro(fm: dict, etichetta: str, data: date, *, team: dict, variante: str | None = None,
                    presenze: dict | None = None, verbale: VerbaleDoc | None = None, trascritto: str = "",
-                   info=anagrafica_info, oggi: date | None = None) -> str:
-    """Testo completo del nuovo resoconto: sezioni fisse compilate, ARGOMENTI/AZIONI vuoti."""
+                   info=anagrafica_info, oggi: date | None = None, proposta: dict | None = None) -> str:
+    """Testo completo del nuovo resoconto: sezioni fisse compilate, ARGOMENTI/AZIONI vuoti — oppure presi da
+    `proposta` (dict di proposta_copilot.parse_proposta; mai per il collaudo). I partecipanti della proposta
+    contano solo senza CSV presenze, con la nota di lista incompleta."""
     oggi = oggi or date.today()
     codice = fm.get("codice_rilascio", "")
     collaudo = etichetta == "Collaudo"
     if collaudo and variante not in CHIUSURE:
         raise ValueError("variante di collaudo obbligatoria: firma | telematica | telematica_in_riunione")
+    if collaudo:
+        proposta = None
+    pp = (proposta or {}).get("partecipanti") or {}
     if presenze and (presenze.get("adm") or presenze.get("sogei")):
         adm, sogei = partecipanti_da_presenze(presenze, team, fm, info)
         nota = ""
+    elif pp.get("adm") or pp.get("sogei"):
+        adm, sogei = partecipanti_da_presenze({"adm": [{"nome": n} for n in pp.get("adm", [])],
+                                               "sogei": [{"nome": n} for n in pp.get("sogei", [])]}, team, fm, info)
+        nota = NOTA_INCOMPLETA
     else:
         adm, sogei = partecipanti_da_team(fm, team, info)
         nota = NOTA_INCOMPLETA
@@ -503,7 +512,8 @@ def crea_scheletro(fm: dict, etichetta: str, data: date, *, team: dict, variante
             esito = riallinea_esito_da_verbale(esito, verbale)
         sezioni += [("ARGOMENTI TRATTATI", argomenti_collaudo(fm)), ("ESITO", ser_esito(esito))]
     else:
-        sezioni += [("ARGOMENTI TRATTATI", ""), ("AZIONI CONCORDATE", "")]
+        sezioni += [("ARGOMENTI TRATTATI", (proposta or {}).get("argomenti", "").strip()),
+                    ("AZIONI CONCORDATE", ser_azioni((proposta or {}).get("azioni") or []).strip("\n") if (proposta or {}).get("azioni") else "")]
     fm_out = [("codice_rilascio", codice), ("tipo_riunione", etichetta), ("data_riunione", data.isoformat()),
               ("data_compilazione", oggi.isoformat()), ("compilato_da", "Astolfo Lunardi"),
               ("approvato_da", "Partecipanti"), ("data_approvazione", ""), ("inviato", "false")]

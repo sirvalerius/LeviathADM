@@ -350,6 +350,14 @@ def crea_persona(root: Path, nome: str, *, organizzazione: str = "ADM", direzion
     return out
 
 
+def scrivi_testo(path: Path, text: str) -> int:
+    """Crea o sovrascrive un file di testo del vault (es. Proposta Copilot incollata: l'ultima parola è dell'utente)."""
+    _libero()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path.stat().st_mtime_ns
+
+
 def crea_file(path: Path, text: str) -> int:
     _libero()
     if path.exists():

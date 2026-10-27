@@ -206,7 +206,7 @@ def _proxy_irraggiungibile() -> bool:
 
 def _vault_in_git() -> bool:
     """True solo se la radice del vault è la radice di un repository git: un vault dentro un'altra cartella
-    versionata (es. pack scompattato in un repo) non deve far committare quel repo. Brezza git il sync fa
+    versionata (es. pack scompattato in un repo) non deve far committare quel repo. Ciclone git il sync fa
     solo il ricalcolo locale (spec fase 5 §4.3: versione web e pack autonomi)."""
     # Decide la presenza di `.git` nella radice, non l'esito di un comando git: un git rotto o assente dal PATH
     # deve fallire al pull come sempre, non far scattare il ricalcolo locale (che sugli slave è riservato al master).
@@ -343,6 +343,43 @@ def _chiudi_approvazioni_app(pending: dict) -> None:
             pending.setdefault("step_falliti", []).append({"step": "chiudi_approvazione", "errore": f"{md.name}: {e}"})
 
 
+def _avanza_stati(pending: dict) -> None:
+    """Master: allinea lo stato di ogni scheda ai fatti registrati nel vault (avanza_stato.avanza_tutte: solo
+    in avanti), prima di rigenerare le pagine, così Rilasci.md mostra già lo stato corretto."""
+    errori: list[tuple[str, str]] = []
+    try:
+        import avanza_stato
+        for codice, da, a in avanza_stato.avanza_tutte(errori=errori):
+            print(f"   Stato {codice}: {da or '(vuoto)'} → {a}")
+    except Exception as e:  # noqa: BLE001
+        print(f"   ERRORE avanza_stato: {e} — proseguo")
+        pending.setdefault("step_falliti", []).append({"step": "avanza_stato", "errore": str(e)})
+    for codice, err in errori:
+        pending.setdefault("step_falliti", []).append({"step": "avanza_stato", "errore": f"{codice}: {err}"})
+
+
+BUILD_PAGINE = ("build_bozze", "build_scadenze", "build_stato_invii", "build_rilasci", "build_riunioni",
+                "build_da_collaudare", "build_da_firmare")
+
+
+def _rigenera_master(pending: dict, senza_git: bool) -> None:
+    """Ricalcolo del master (o locale senza git): approvazioni segnate dall'app, .docx superati, stati, pagine, stati.
+    La seconda passata degli stati serve perché build_da_collaudare/build_da_firmare copiano nella scheda le date e
+    le spunte segnate in Obsidian."""
+    import importlib
+    _chiudi_approvazioni_app(pending)
+    _rigenera_docx_superati(pending)
+    _avanza_stati(pending)
+    print("   Rigenerazione pagine (master)..." if not senza_git else "   Rigenerazione pagine (ricalcolo locale)...")
+    for nome in BUILD_PAGINE:
+        try:
+            importlib.import_module(nome).build()
+        except Exception as e:
+            print(f"   ERRORE {nome}: {e} — proseguo")
+            pending.setdefault("step_falliti", []).append({"step": nome, "errore": str(e)})
+    _avanza_stati(pending)
+
+
 def main() -> None:
     args = sys.argv[1:]
 
@@ -396,28 +433,7 @@ def main() -> None:
             pending.setdefault("step_falliti", []).append({"step": "archivia_inviati", "errore": str(e)})
 
         if machine_config.is_master() or senza_git:   # senza git non c'è un master: il ricalcolo è tutto locale
-            _chiudi_approvazioni_app(pending)
-            _rigenera_docx_superati(pending)
-            print("   Rigenerazione pagine (master)..." if not senza_git else "   Rigenerazione pagine (ricalcolo locale)...")
-            import build_bozze
-            import build_scadenze
-            import build_stato_invii
-            import build_rilasci
-            import build_riunioni
-            import build_da_collaudare
-            import build_da_firmare
-            for nome, fn in (("build_bozze", build_bozze.build),
-                             ("build_scadenze", build_scadenze.build),
-                             ("build_stato_invii", build_stato_invii.build),
-                             ("build_rilasci", build_rilasci.build),
-                             ("build_riunioni", build_riunioni.build),
-                             ("build_da_collaudare", build_da_collaudare.build),
-                             ("build_da_firmare", build_da_firmare.build)):
-                try:
-                    fn()
-                except Exception as e:
-                    print(f"   ERRORE {nome}: {e} — proseguo")
-                    pending.setdefault("step_falliti", []).append({"step": nome, "errore": str(e)})
+            _rigenera_master(pending, senza_git)
 
     if not push_only:
         print("\n3. Ricostruisco Bozze da inviare/ ...")

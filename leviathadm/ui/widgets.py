@@ -14,9 +14,13 @@ def sposta(lista: list, i: int, delta: int) -> list:
 
 
 def ruolo_da_anagrafica(sigla: str, fm: dict) -> str:
-    parti = [p for p in (fm.get("direzione", "").strip(), fm.get("ufficio", "").strip()) if p]
-    testo = " – ".join(parti)
-    return f"({sigla}) {testo}".strip() if sigla else testo
+    """Prima colonna della tabella partecipanti: "(SIGLA) DIREZIONE" (l'ufficio va nella seconda, ufficio_da_anagrafica)."""
+    direzione = fm.get("direzione", "").strip()
+    return f"({sigla}) {direzione}".strip() if sigla else direzione
+
+
+def ufficio_da_anagrafica(fm: dict) -> str:
+    return fm.get("ufficio", "").strip()
 
 
 class ListaRighe:
@@ -248,7 +252,7 @@ def dialogo_nuova_persona(idx, on_creata=None) -> ui.dialog:
 
 def campo_persona(label: str, value: str, persone: list[str], *, idx=None, classes: str = 'w-64') -> ui.select:
     """Campo per un nome di persona: suggerimenti dall'Anagrafica, ma accetta anche testo libero
-    (es. 'Nevischio - Libeccio' per due RP). Si legge con .value come una ui.input.
+    (es. 'Ortensia - Maestrale' per due RP). Si legge con .value come una ui.input.
     Con idx, l'icona a destra apre "Nuova persona": la scheda viene creata e il nome selezionato."""
     opzioni = sorted(set(persone) | ({value} if value else set()))
     sel = ui.select(opzioni, value=value or None, label=label, with_input=True, new_value_mode='add-unique',) \

@@ -50,7 +50,7 @@ def find_presenze_csv(rel_dir: Path, data_riunione: str | None = None) -> Path |
                 return c
         return None        # data nota ma nessun CSV: mai il CSV di un'altra riunione
 
-    # Brezza data: il più recente per data di modifica
+    # Ciclone data: il più recente per data di modifica
     return max(csvs, key=lambda p: p.stat().st_mtime)
 
 

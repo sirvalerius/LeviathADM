@@ -413,11 +413,12 @@ def prossimo_sal(fasi: list[str]) -> int:
     return (max(nn) + 1) if nn else 1
 
 
-def _ruolo(sigla: str, nome: str, info) -> str:
+def _ruolo(sigla: str, nome: str, info) -> tuple[str, str]:
+    """(ruolo, ufficio): "(SIGLA) DIREZIONE" nella prima colonna, UFFICIO nella seconda (formato dal 2026-10-23;
+    prima direzione e ufficio stavano concatenati con " – " nella prima colonna e la seconda restava vuota)."""
     i = info(nome) or {}
-    parti = [p for p in (i.get("direzione", "").strip(), i.get("ufficio", "").strip()) if p]
-    testo = " – ".join(parti)
-    return f"({sigla}) {testo}".strip() if sigla else testo
+    direzione, ufficio = i.get("direzione", "").strip(), i.get("ufficio", "").strip()
+    return (f"({sigla}) {direzione}".strip() if sigla else direzione), ufficio
 
 
 def _stesso(a: str, b: str) -> bool:
@@ -431,8 +432,8 @@ def _sogei_ordinati(nomi: list[str], fm: dict) -> list[str]:
 
 
 def partecipanti_da_team(fm: dict, team: dict, info=anagrafica_info) -> tuple[list[Partecipante], list[str]]:
-    adm = [Partecipante(ruolo=_ruolo(sigla, nome, info), nome=nome)
-           for sigla in ("PM", "RA", "RP", "RB") for nome in team.get(sigla, [])]
+    adm = [Partecipante(ruolo=r, ufficio=u, nome=nome)
+           for sigla in ("PM", "RA", "RP", "RB") for nome in team.get(sigla, []) for r, u in [_ruolo(sigla, nome, info)]]
     return adm, _sogei_ordinati(list(team.get("SOGEI", [])), fm)
 
 
@@ -446,7 +447,8 @@ def partecipanti_da_presenze(presenze: dict, team: dict, fm: dict,
             if t is not None:
                 sigla, nome_anag = s, t
                 break
-        adm.append(Partecipante(ruolo=_ruolo(sigla, nome_anag, info), nome=p["nome"]))
+        r, u = _ruolo(sigla, nome_anag, info)
+        adm.append(Partecipante(ruolo=r, ufficio=u, nome=p["nome"]))
     sogei = [p["nome"] for p in presenze.get("sogei", [])]
     return ordina_adm(adm), _sogei_ordinati(sogei, fm)
 

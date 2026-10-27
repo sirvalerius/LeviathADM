@@ -29,6 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 import archivia_inviati
+import avanza_stato
 import build_bozze
 import build_scadenze
 import build_stato_invii
@@ -52,6 +53,10 @@ def main() -> None:
 
     print("1. Archivio resoconti marcati come inviati...")
     archivia_inviati.main()
+    print()
+
+    print("1b. Avanzo gli stati delle schede...")
+    avanza_stato.main()
     print()
 
     print("2. Aggiorno pagina Bozze da inviare.md...")

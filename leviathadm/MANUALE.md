@@ -17,7 +17,7 @@ Questo manuale è lo stesso nelle due versioni: le differenze sono indicate dove
 
 **Versione Python.** `leviathadm.cmd` crea l'ambiente virtuale `.venv/` al primo avvio, installa i requisiti, verifica pacchetti, Outlook, Word, pandoc, ruolo del PC e porta, poi apre il server su `http://127.0.0.1:8080`. Opzioni: `--check` (solo verifiche), `--porta N` (altra porta). L'app va avviata da una console propria e fermata con Ctrl+C. Nel pack demo `leviathadm.cmd` usa il Python embedded della cartella `python/`.
 
-**Versione Web.** Aprire `leviathadm.html`, premere **Apri cartella…** e scegliere la cartella del vault (quella che contiene `PO 2026/` e `Anagrafica/`). Il browser chiede il permesso a ogni apertura e non memorizza nulla della cartella scelta. Serve Edge o Chrome (File System Access); se una policy aziendale blocca l'accesso ai file compare un avviso nella schermata iniziale. Il pulsante **⟳** nell'header rilegge tutti i file dal disco.
+**Versione Web.** Aprire `leviathadm.html`, premere **Apri cartella…** e scegliere la cartella del vault (quella che contiene `PO 2026/` e `Anagrafica/`). Il browser chiede il permesso a ogni apertura e non memorizza nulla della cartella scelta. Serve Edge o Chrome (File System Access); se una policy aziendale blocca l'accesso ai file compare un avviso nella schermata iniziale. Il pulsante **⟳** nell'header rilegge tutti i file dal disco. Dal 1.5.0 la web ricorda l'ultima cartella aperta da quella copia dell'app (handle in IndexedDB, chiave = percorso del file): alla prossima apertura basta «Riapri», il browser richiede solo il permesso; «dimentica» cancella il ricordo (consigliato su PC condivisi: altri file HTML aperti nello stesso browser potrebbero leggere l'handle, ma per usarlo dovrebbero ottenere di nuovo il permesso da te).
 
 **Header e menu.** Il menu laterale (☰) elenca le viste; il selettore del **piano** (anno) nell'header sceglie la cartella `PO <anno>/` quando il vault ne contiene più di una; **◐** cambia tema chiaro/scuro. Nella versione Python c'è anche la **ricerca globale** (Ctrl+K) su codici, titoli e testi delle note.
 
@@ -37,8 +37,17 @@ Un clic sulla riga apre la scheda `ADMxxx-xx-xX.md`:
 - **Ciclo di vita**: lo stepper delle riunioni (Startup → Prima Analisi → SAL → Collaudo) con, per ogni fase, il resoconto collegato. Lo step **+** crea un nuovo resoconto (vedi "Resoconti").
 - **Riunioni, Azioni aperte, Decisioni chiave, Prossima riunione**: le sezioni della scheda. Le azioni con una scadenza (`— scadenza: GG/MM/AAAA`) compaiono anche in Scadenze.
 - **Allegati protocolli**: la tabella dei documenti protocollati (analisi, approvazione, disponibilità a collaudo, collaudo, estensione).
-- **Modifica scheda**: modulo con i campi del frontmatter. Si salvano **solo le chiavi cambiate**; le date si normalizzano in ISO; `DA COMPLETARE` è ammesso dove un dato non è ancora noto.
-- **Azioni** (solo Python): Carica fonti, Convocazione startup, Convocazione collaudo, Genera mail resoconto, Prepara cartella firma. Lanciano gli script del vault in un sottoprocesso; l'output compare nel pannello.
+- **Modifica scheda**: modulo con i campi del frontmatter (anagrafica, team, date e i cinque **protocolli**: analisi, approvazione analisi, disponibilità a collaudo, collaudo, estensione esercizio — numero e data del protocollo ADM, `DA COMPLETARE` finché manca il numero; il riferimento SOGEI non è un protocollo ADM). Si salvano **solo le chiavi cambiate**; le date si normalizzano in ISO; `DA COMPLETARE` è ammesso dove un dato non è ancora noto. La tabella "Allegati protocolli" si compila in Obsidian.
+- **Carica fonti** (entrambe le versioni): trascritti, CSV presenze e PDF di una riunione in `_fonti/` (vedi "Carica fonti" sotto Resoconti).
+- **Convoca startup / Convoca collaudo** (entrambe le versioni): bozza `.eml` con invito calendario (vedi "Convocazioni" sotto Resoconti).
+- **Lettere di fine collaudo** (entrambe le versioni): i `.docx` di Trasmissione copia verbale e Richiesta estensione in esercizio compilati dai template (vedi "Lettere di fine collaudo" sotto Resoconti).
+- **Azioni** (solo Python): Convocazione startup, Convocazione collaudo, Genera mail resoconto, Prepara cartella firma. Lanciano gli script del vault in un sottoprocesso; l'output compare nel pannello.
+
+### Stato del rilascio
+
+Lo stato non va più tenuto a mano: ogni volta che l'app scrive una milestone nella scheda (riga Riunioni di un nuovo resoconto, trascritto caricato, ✅ di invio, data di collaudo effettiva, lettere in firma o protocollate, protocolli salvati da Modifica scheda) lo stato **avanza da solo** allo stato suggerito dai fatti registrati, sempre e solo in avanti: Da Avviare → Bozza → Startup → Analisi → In corso → In Verifica → Collaudo → Concluso. La regola è in `SCHEMA.md` ("Avanzamento automatico dello stato"); il sync del master e il daily check la applicano in blocco a tutte le schede, così valgono anche le modifiche fatte in Obsidian.
+
+Nel dettaglio rilascio, accanto allo stato, compare `→ <suggerito>` e il pulsante **Avanza stato** quando il suggerito supera lo stato scritto. Per bloccare l'automatismo su una scheda, in Modifica scheda spunta **Stato manuale**: resta il solo badge. Uno stato scelto a mano in Modifica scheda non viene riavanzato in quello stesso salvataggio; `Rinominato` non si tocca mai.
 
 ### Nuovo punto di piano
 
@@ -54,7 +63,11 @@ Ogni riunione produce un resoconto `ADMxxx-xx-xX - AAAAMMGG Resoconto <Tipo>.md`
 
 Dallo step **+** del ciclo di vita (o dal pulsante "Nuovo resoconto" nella versione Python): si sceglie la fase (uguale o successiva all'ultima già fatta, o un testo libero) e la data. Viene generato lo **scheletro** con le sezioni fisse già compilate dalla scheda e dall'Anagrafica: tabelle RIUNIONE / RESOCONTO / OBIETTIVO, LISTA PARTECIPANTI, formula dell'OBIETTIVO DELLA RIUNIONE; nella scheda viene aggiunta la riga in `## Riunioni` con ❌ (non inviato). Restano da scrivere **ARGOMENTI TRATTATI** e **AZIONI CONCORDATE** (per il collaudo: ESITO, con i casi di test presi dal Verbale).
 
-Nella versione Python i partecipanti possono venire dal **CSV presenze di Teams** caricato con "Carica fonti"; nella versione Web vengono dal team della scheda (la lista va completata a mano).
+Se nella cartella del rilascio c'è il **CSV presenze di Teams** con la data della riunione (caricato con "Carica fonti"), la LISTA PARTECIPANTI nasce dai presenti veri (ruoli PM/RA/RP/RB riconosciuti dal team della scheda, referente SOGEI per primo) e i presenti nuovi ricevono una scheda in Anagrafica; altrimenti dal team della scheda, con la nota "[lista incompleta — integrare con report presenze Teams]". Nell'editor il pulsante **Importa CSV presenze** sostituisce le liste ADM e SOGEI con quelle del CSV della data del resoconto.
+
+### Carica fonti
+
+Dal dettaglio del rilascio (o dal modulo Nuova riunione, "Carica fonti prima"): data, fase e uno o più file — trascritti `.docx`/`.md`/`.vtt`, il CSV presenze scaricato da Teams (col suo nome originale: contiene la data), PDF. I file vanno in `_fonti/AAAAMMGG <Fase>/` del rilascio; i `.docx` e i `.vtt` vengono convertiti in `.md` (nella versione Python con pandoc, nella Web con il lettore Word dell'app: stesso testo, senza pandoc); il CSV aggiorna l'Anagrafica (schede nuove, email mancanti); il primo trascritto entra nella riga `## Riunioni` se la colonna è vuota. Per ogni file compare l'esito: salvato, identico (già presente uguale), conflitto (esiste con contenuto diverso: "Sovrascrivi" per forzare), rifiutato (estensione non ammessa o oltre 200 MB). Se il resoconto di quella riunione esiste già in bozza, un link apre l'editor con le presenze importate (da salvare).
 
 ### Editor a sezioni
 
@@ -76,9 +89,21 @@ Il resoconto si modifica sezione per sezione: partecipanti (selettore con i nomi
 
 Per rettificare un resoconto già inviato: **Riporta in bozza** riporta `.md` e `.docx` nella cartella del rilascio, elimina il `.msg` obsoleto, azzera `inviato` e la scadenza, rimette ❌ nella scheda. Si corregge, si rigenera il `.docx` e al prossimo invio si segna di nuovo inviato.
 
+### Convocazioni
+
+**Convoca startup** e **Convoca collaudo** (dal dettaglio rilascio; nella versione Python nella card Azioni) producono `ADMxxx-xx-xX - AAAAMMGG Convocazione Startup.eml` / `… Convocazione Collaudo.eml` nella cartella del rilascio: la `.eml` **è essa stessa l'invito** (invito calendario incorporato), basta aprirla in Outlook e premere Invia. Destinatari dai ruoli della scheda (A = RA, in copia RP, RB e SOGEI; per la startup anche il referente SOGEI del frontmatter); chi non ha l'email in Anagrafica è segnalato nell'esito e va aggiunto in Outlook. Data proposta: startup 7 giorni lavorativi dopo oggi; collaudo dalla disponibilità a collaudo + 20 giorni, 15 (o 10) giorni prima, mai nel weekend (campo vuoto con avviso se la disponibilità è `DA COMPLETARE`). Ora `HH:MM`, mai tra le 12:30 e le 14:00; conferma se la data cade di sabato o domenica. Startup: fino a tre date alternative nel corpo. Collaudo: PDF del piano di test (fra quelli del rilascio e di `_fonti/`), documento di analisi e casi di test, precompilati dal `… Piano di Test.md` del rilascio se c'è; crea anche il **Verbale di Collaudo** (mai sovrascritto). Il mittente (organizzatore dell'invito) è il PM della dashboard `PO 2026.md`, modificabile nella finestra.
+
+**Cambio di data del collaudo:** una nuova convocazione con un'altra data elimina la bozza `.eml` precedente non ancora segnata inviata e rinomina il Verbale alla nuova data conservando le spunte (anche quelle fatte in Obsidian), purché il collaudo non risulti già svolto (esito complessivo compilato, data del Verbale già passata o `data_collaudo_effettiva` nella scheda): in quel caso il vecchio Verbale resta e se ne crea uno nuovo.
+
 ### Verbale di Collaudo
 
 La convocazione del collaudo crea `ADMxxx-xx-xX - AAAAMMGG Verbale di Collaudo.md` con l'elenco delle verifiche. L'editor del Verbale (dal dettaglio rilascio) permette di segnare ogni verifica come superata o non superata, con data, tester e note, e l'esito complessivo (positivo, con riserva, negativo): riepilogo e dettaglio restano allineati. Il resoconto di collaudo prende da qui i casi di test e l'esito.
+
+### Lettere di fine collaudo
+
+Dal dettaglio del rilascio (nella versione Python nella card Azioni), **Lettere di fine collaudo** compila i template Word `Template - ADMXXX-XX-XX Trasmissione copia verbale di collaudo.docx` e `… Richiesta estensione in esercizio.docx` e scrive i `.docx` nella cartella del rilascio (`ADMxxx-xx-xX Trasmissione copia verbale di collaudo.docx`, `ADMxxx-xx-xX - Richiesta estensione in esercizio.docx`), gli stessi nomi che Da firmare cerca. La finestra propone, modificabili: la tabella del Piano Operativo dalla scheda; i rappresentanti ADM e SOGEI dal resoconto di collaudo (altrimenti dal CSV presenze del collaudo, altrimenti dal team della scheda), un nome per riga in forma Cognome Nome (i cognomi composti con particella — De Luca, Lo Presti, Della Valle — vengono riconosciuti; per gli altri scrivi `Cognome | Nome`); l'esito dal Verbale (POSITIVO · con riserva · NEGATIVO: con NEGATIVO la Richiesta estensione parte deselezionata); per la Richiesta estensione la Direzione e l'Ufficio del referente business, ricavati dall'Anagrafica (Direzione dal nodo Strutture, Ufficio come "Ufficio" + denominazione dell'organigramma in iniziali maiuscole) e l'Area di Staff. **Rileggi sempre l'intestazione in Word prima della firma**: la denominazione dell'ufficio è una convenzione, non un dato. Solo i segnaposto vengono sostituiti: tab, rientri e firma del Dirigente restano quelli del template; la riga `Prot.:` la compila la protocollazione.
+
+Una lettera già presente non viene toccata ("esistente, non sovrascritta"); con **Sovrascrivi** viene riscritta e la cartella `da mandare in firma/<Lettera>/` viene svuotata, così il sync del PC master rifà i PDF dalla lettera nuova (li rifà solo se la cartella è vuota). I PDF per Arcipelago e la cartella restano al sync del master (Word). Ciclone `data_collaudo_effettiva` le lettere si creano comunque, ma compaiono in Da firmare solo quando il collaudo è registrato come svolto.
 
 ---
 
@@ -105,7 +130,7 @@ Punti di piano con disponibilità a collaudo ricevuta e collaudo non ancora svol
 
 ### Da firmare
 
-Lettere di fine collaudo (Trasmissione copia verbale · Richiesta estensione in esercizio) presenti nella cartella del rilascio: **da mandare in firma** e **in attesa di protocollazione**. I pulsanti registrano i passaggi (`in_firma`, `protocollata`); nella versione Python "Prepara cartella firma" produce la cartella con i PDF.
+Lettere di fine collaudo (Trasmissione copia verbale · Richiesta estensione in esercizio) presenti nella cartella del rilascio: **da mandare in firma** e **in attesa di protocollazione**. I pulsanti registrano i passaggi (`in_firma`, `protocollata`); nella versione Python "Prepara cartella firma" produce la cartella con i PDF (il sync del master lo fa da solo); nella Web i `.docx` delle lettere si creano con "Lettere di fine collaudo" nel dettaglio rilascio.
 
 ### Stato invii
 
@@ -148,10 +173,13 @@ Il pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera 
 |---|---|---|
 | Lettura di rilasci, resoconti, note, Anagrafica | sì | sì |
 | Modifica scheda, Nuovo punto di piano, Nuova persona | sì | sì |
-| Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza | sì | sì (partecipanti dal team, senza CSV presenze) |
+| Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza, partecipanti dal CSV presenze | sì | sì |
+| Carica fonti (trascritti → `.md`, CSV presenze → Anagrafica, riga Riunioni), protocolli in Modifica scheda | sì | sì (i `.docx` convertiti dall'app, senza pandoc) |
 | Cruscotto con Segna inviato, Chiudi approvazione, collaudo effettivo, lettere | sì | sì |
 | Rigenera .docx, Genera mail `.msg`, Mail definitiva | sì | sì (il `.msg` del browser porta la firma del template) |
-| PDF, convocazioni, Carica fonti | sì | no: il PDF lo produce Word dal sync della versione Python |
+| Convocazioni startup e collaudo (`.eml` con invito, PDF del piano di test, Verbale) | sì | sì (organizzatore dalla dashboard; al cambio di data bozza precedente eliminata e Verbale rinominato) |
+| Lettere di fine collaudo (`.docx` dai template, dati dalla scheda/resoconto/Verbale/Anagrafica) | sì | sì |
+| PDF e cartella `da mandare in firma/` | sì (Word) | no: li produce il sync del PC master |
 | Azioni, Sync, Log azioni, Riavvia backend, ricerca Ctrl+K, Apri in Outlook/Apri cartella | sì | no |
 | Requisiti | Python 3.12, Outlook/Word/pandoc per le azioni | Edge o Chrome (103 o successivi per Word e mail) |
 

@@ -44,7 +44,7 @@ DIREZIONI_CENTRALI = {
             ("Bingo", "Maria Rosaria MEOLA"),
             ("Gioco a distanza e scommesse", "Antonio GIULIANI"),
             ("Giochi numerici e lotterie", "Fulgenzio Brezza"),
-            ("Controlli giochi", "Fulgenzio Pennacchio"),
+            ("Controlli giochi", "Gelsomina Quadrante"),
         ],
     },
     "DDOG": {
@@ -55,7 +55,7 @@ DIREZIONI_CENTRALI = {
             ("AEO, compliance e grandi imprese", "Loredana SASSO"),
             ("Tariffa e classificazione", "Sabrina FOSCHIA"),
             ("Origine e valore", "Anna MAIELLO"),
-            ("Regimi e procedure doganali", "Marlene CICLONE"),
+            ("Regimi e procedure doganali", "Marlene DIRUPO"),
             ("Controlli dogane", "Antonella BIANCHI"),
             ("Autorizzazioni temporanee e settore agricolo", "Augusto ZUCARO"),
         ],

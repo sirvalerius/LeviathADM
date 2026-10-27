@@ -24,6 +24,7 @@ LAVORI = VAULT / "PO 2026"
 OUT = LAVORI / "Stato invii.md"
 
 sys.path.insert(0, str(Path(__file__).parent))
+from mail_utils import salta_definitivo  # noqa: E402
 from mail_utils import parse_frontmatter  # noqa: E402
 
 RESOCONTO_RE = re.compile(r"^(ADM\d{3}-\d{2}-[0-9A-Za-z]{2}) - (\d{8}) Resoconto (.+)$")
@@ -96,7 +97,7 @@ def collect() -> tuple[dict[str, dict[str, dict]], list[str]]:
 
             fm = parse_frontmatter(f)
             inviato = fm.get("inviato", "").lower() == "true"
-            salta = fm.get("salta_definitivo", "").lower() == "true"
+            salta = salta_definitivo(fm)   # flag o collaudo: D➖
             definitivo_inviato = fm.get("definitivo_inviato", "").lower() == "true"
             ha_scadenza = bool(fm.get("data_scadenza_approvazione", "").strip())
 

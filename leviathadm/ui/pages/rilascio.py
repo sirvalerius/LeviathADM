@@ -10,11 +10,13 @@ from leviathadm.ui.esecuzione_ui import pulsante_azione
 from leviathadm.ui.pages import nuovo_resoconto
 from leviathadm.ui.pages.carica_fonti import dialogo_carica_fonti
 from leviathadm.ui.pages.convocazione import dialogo_convocazione, giorni_lavorativi_dopo, proponi_data_collaudo
+from leviathadm.ui.pages.lettere import dialogo_lettere
 from leviathadm.ui.pages.resoconto import carica_doc, sezioni_lettura
 from leviathadm.ui.pages.resoconto_modifica import editor_resoconto
 from leviathadm.ui.shell import shell, vai
 from leviathadm.ui.theme import STATO_COLORS
 from leviathadm.vault import azioni as A
+from leviathadm.vault import writers
 from leviathadm.vault.loader import resoconti_non_collegati
 from leviathadm.vault.models import Rilascio
 from leviathadm.vault.parsers import ha_vincoli_normativi
@@ -38,6 +40,20 @@ DATE = [('data_fine_analisi', 'Fine analisi'), ('data_disponibilita_collaudo', '
 ICONE_FASE = {'Startup': 'flag', 'Collaudo': 'verified'}
 NUOVO = 'nuovo'   # nome dello step "+" in coda al ciclo di vita
 COLORE_STATO_RESOCONTO = {'bozza': 'grey-8', 'inviato': 'blue-9', 'definitivo': 'green-8'}
+
+
+def avanzamento_stato(r: Rilascio, oggi: date | None = None) -> dict | None:
+    """{da, a, manuale} se lo stato suggerito dai fatti della scheda supera quello scritto (avanza_stato.suggerisci),
+    altrimenti None. `manuale` = stato_manuale: true (solo badge, niente pulsante). Rinominato: mai."""
+    import avanza_stato
+    fm = r.frontmatter
+    if (fm.get('stato') or '').strip() == avanza_stato.RINOMINATO:
+        return None
+    riunioni = [{'fase': m.fase, 'inviato': m.inviato} for m in r.riunioni]
+    s = avanza_stato.suggerisci(fm, riunioni, oggi or date.today())
+    if not s or avanza_stato.rango(s) <= avanza_stato.rango(r.stato):
+        return None
+    return {'da': r.stato, 'a': s, 'manuale': (fm.get('stato_manuale') or '').strip().lower() == 'true'}
 
 
 def _icona(fase: str) -> str:
@@ -67,6 +83,22 @@ def render_rilascio(codice: str) -> None:
         with ui.row().classes('w-full items-center gap-3'):
             ui.label(r.descrizione_rilascio).classes('text-xl font-bold text-slate-800')
             ui.badge(r.stato, color=STATO_COLORS.get(r.stato, 'grey-8')).props('outline')
+            av = avanzamento_stato(r)
+            if av:
+                ui.badge(f"→ {av['a']}", color='indigo-8').props('outline') \
+                    .tooltip('Stato suggerito dai fatti registrati nella scheda'
+                             + (' — avanzamento automatico bloccato da stato_manuale' if av['manuale'] else ''))
+                if not av['manuale']:
+                    def _avanza(a=av['a'], mtime=r.mtime_ns):
+                        try:
+                            writers.update_frontmatter(r.path, {'stato': a}, mtime)
+                        except writers.ConflittoModifica as e:
+                            ui.notify(str(e), type='negative', close_button=True)
+                            return
+                        idx.reload([r.path])
+                        ui.notify(f'Stato avanzato: {r.stato or "(vuoto)"} → {a}', type='positive')
+                        vai(f'/rilascio/{codice}')
+                    ui.button('Avanza stato', icon='arrow_forward', on_click=_avanza).props('dense outline')
             if ha_vincoli_normativi(fm.get('vincoli_normativi', '')):
                 ui.badge('Vincoli normativi', color='amber-9').props('outline')
             ui.space()
@@ -160,7 +192,7 @@ def render_rilascio(codice: str) -> None:
                     if res.path.parent.name == 'inviati':
                         ui.label('Inviato: sola lettura. Per correggerlo usa "Riporta in bozza" nella pagina del resoconto.')
                     elif bloccato:
-                        ui.label('Brezza sezioni standard: modificabile solo come nota grezza.')
+                        ui.label('Ciclone sezioni standard: modificabile solo come nota grezza.')
                     else:
                         ui.label('Bozza: campi modificabili.')
                     ui.link('Apri pagina', f'/resoconto/{nid}').classes('text-sm text-blue-900')
@@ -181,6 +213,8 @@ def render_rilascio(codice: str) -> None:
                 ui.button('Carica fonti', icon='upload', on_click=fonti_dlg.open).props('dense outline')
                 ui.button('Convocazione startup', icon='event', on_click=conv_s.open).props('dense outline')
                 ui.button('Convocazione collaudo', icon='event', on_click=conv_c.open).props('dense outline')
+                lett = dialogo_lettere(idx, r)
+                ui.button('Lettere di fine collaudo', icon='description', on_click=lett.open).props('dense outline')
                 pulsante_azione(A.CATALOGO['mail_resoconto'], {'codice': r.codice}, rilascio=r.codice,
                                 files_rilascio=lambda g, r=r: files_rilascio(r, g))
                 pulsante_azione(A.CATALOGO['prepara_firma'], {'codice': r.codice}, rilascio=r.codice)

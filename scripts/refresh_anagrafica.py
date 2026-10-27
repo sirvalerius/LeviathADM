@@ -144,12 +144,12 @@ def delete_file(path: Path, reason: str) -> None:
 
 DUPLICATES_TO_REMOVE = {
     # nome_file_da_eliminare: nome_file_canonico_da_tenere
-    "Brunilde Pennacchio": "Pennacchio Brunilde",
+    "Cassiopea Quadrante": "Quadrante Cassiopea",
 }
 
 # File che devono avere un'org specifica (override)
 ORG_OVERRIDES = {
-    "Uragano Nicodemo": "SOGEI",
+    "Vortice Ortensio": "SOGEI",
 }
 
 

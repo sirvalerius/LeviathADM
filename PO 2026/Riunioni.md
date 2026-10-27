@@ -1,5 +1,5 @@
 ---
-aggiornato: 2026-10-19
+aggiornato: 2026-10-27
 ---
 
 # Riunioni — stato avanzamento
@@ -9,14 +9,14 @@ aggiornato: 2026-10-19
 | Codice | Ultima riunione | Resoconto | Prossima riunione |
 |--------|----------------|-----------|-------------------|
 | [[ADM901-01-0A]] | — | — | Startup — da convocare (referente SOGEI da confermare) |
-| [[ADM902-01-0A]] | — | — | Startup — 26/10/2026 ore 10:00 (convocazione da inviare) |
-| [[ADM902-02-0B]] | SAL #1 · 21/09 | — | Collaudo — 29/10/2026 ore 10:00 (da convocare) |
-| [[ADM902-03-0C]] | Collaudo · 12/10 | — | <!-- Data · Tipo --> |
-| [[ADM903-01-0A]] | Startup · 16/10 | — | Prima Analisi — 02/11/2026 ore 11:00 |
-| [[ADM903-02-0B]] | Startup · 29/09 | — | Prima Analisi — 26/10/2026 ore 10:00 |
-| [[ADM904-01-0A]] | SAL #2 · 19/10 | — | SAL #3 — 09/11/2026 ore 15:00 |
-| [[ADM904-02-0B]] | Prima Analisi · 05/10 | — | <!-- Data · Tipo --> |
-| [[ADM905-01-0A]] | Collaudo · 20/08 | — | <!-- Data · Tipo --> |
+| [[ADM902-01-0A]] | — | — | Startup — 03/11/2026 ore 10:00 (convocazione da inviare) |
+| [[ADM902-02-0B]] | SAL #1 · 28/09 | — | Collaudo — 06/11/2026 ore 10:00 (da convocare) |
+| [[ADM902-03-0C]] | Collaudo · 20/10 | — | <!-- Data · Tipo --> |
+| [[ADM903-01-0A]] | Startup · 26/10 | — | Prima Analisi — 10/11/2026 ore 11:00 |
+| [[ADM903-02-0B]] | Startup · 07/10 | — | Prima Analisi — 02/11/2026 ore 10:00 |
+| [[ADM904-01-0A]] | SAL #2 · 26/10 | — | SAL #3 — 16/11/2026 ore 15:00 |
+| [[ADM904-02-0B]] | Prima Analisi · 12/10 | — | <!-- Data · Tipo --> |
+| [[ADM905-01-0A]] | Collaudo · 28/08 | — | <!-- Data · Tipo --> |
 
 ## Storico (rinominati / confluiti)
 

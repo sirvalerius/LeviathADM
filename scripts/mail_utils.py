@@ -89,7 +89,7 @@ def get_email(name: str) -> str:
             # Derivazione ADM: nome.cognome@adm.gov.it
             if org == "ADM":
                 # "Zenit Amerigo" → amerigo.zenit@adm.gov.it
-                # "Libeccio Urbano" → urbano.libeccio@adm.gov.it
+                # "Maestrale Venusta" → venusta.maestrale@adm.gov.it
                 cognome = parts[0].lower()
                 nomi = [p.lower() for p in parts[1:]]
                 return f"{'.'.join(nomi)}.{cognome}@adm.gov.it"
@@ -133,7 +133,7 @@ def team_from_release(text: str) -> dict[str, list[str]]:
             continue
         for role in ("PM", "RA", "RP", "RB"):
             if f"({role})" in ruolo_up or ruolo_up.startswith(role):
-                # RP può essere "Nevischio - Libeccio": cerco i nomi completi
+                # RP può essere "Ortensia - Maestrale": cerco i nomi completi
                 if " - " in nome_cell or " – " in nome_cell:
                     for cognome in re.split(r"\s*[-–]\s*", nome_cell):
                         cognome = cognome.strip()
@@ -152,7 +152,7 @@ def team_from_release(text: str) -> dict[str, list[str]]:
             p = _anagrafica_by_surname(surname)
             result["RB"] = [p.stem if p else nome]
 
-    # Riga SOGEI: **SOGEI:** Rugiada Sigismonda (referente), Estuario Urbano, ...
+    # Riga SOGEI: **SOGEI:** Rugiada Sigismonda (referente), Foschia Venusta, ...
     m = re.search(r"\*\*SOGEI:\*\*\s*(.+)", text)
     if m:
         for part in m.group(1).split(","):
@@ -381,6 +381,13 @@ def save_msg(
         save_path.unlink()
     mail.SaveAs(str(save_path.resolve()), 3)  # 3 = olMSG
     mail.Close(1)  # 1 = olDiscard: non lasciarlo come bozza in Drafts
+
+
+def salta_definitivo(fm: dict) -> bool:
+    """True se il resoconto non entra nel flusso del definitivo (PDF + mail di tacita approvazione): flag
+    `salta_definitivo: true`, oppure resoconto di **collaudo** (dal 2026-10-23: il collaudo si chiude con le lettere di
+    fine collaudo, non con il definitivo)."""
+    return (fm.get("salta_definitivo", "") or "").strip().lower() == "true" or "collaudo" in (fm.get("tipo_riunione", "") or "").lower()
 
 
 def format_tipo_riunione(tipo: str) -> str:

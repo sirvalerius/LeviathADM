@@ -21,6 +21,7 @@ from typing import (
     ClassVar,
     Generic,
     NoReturn,
+    Self,
     TypeVar,
     cast,
     final,
@@ -28,11 +29,6 @@ from typing import (
 )
 
 from ._abc import MDArg, MultiMapping, MutableMultiMapping, SupportsKeys
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 MAXSIZE = sys.maxsize
 
@@ -1548,7 +1544,21 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     _md: MultiDict[_V]
 
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        self = super().__new__(cls)
+        try:
+            self._set_target(*args, **kwargs)
+        except TypeError:
+            # A subclass's own __init__() may convert its arguments
+            if cls.__init__ is MultiDictProxy.__init__:
+                raise
+            self._md = self._empty_target()
+        return self
+
     def __init__(self, arg: "MultiDict[_V] | MultiDictProxy[_V]"):
+        self._set_target(arg)
+
+    def _set_target(self, arg: "MultiDict[_V] | MultiDictProxy[_V]") -> None:
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
                 f"ctor requires MultiDict or MultiDictProxy instance, not {type(arg)}"
@@ -1557,6 +1567,9 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
             self._md = arg._md
         else:
             self._md = arg
+
+    def _empty_target(self) -> "MultiDict[_V]":
+        return MultiDict()
 
     def __reduce__(self) -> NoReturn:
         raise TypeError(f"can't pickle {self.__class__.__name__} objects")
@@ -1643,14 +1656,17 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
     """Read-only proxy for CIMultiDict instance."""
 
-    def __init__(self, arg: MultiDict[_V] | MultiDictProxy[_V]):
+    def _set_target(self, arg: MultiDict[_V] | MultiDictProxy[_V]) -> None:
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
                 "ctor requires CIMultiDict or CIMultiDictProxy instance"
                 f", not {type(arg)}"
             )
 
-        super().__init__(arg)
+        super()._set_target(arg)
+
+    def _empty_target(self) -> CIMultiDict[_V]:
+        return CIMultiDict()
 
     def copy(self) -> CIMultiDict[_V]:
         """Return a copy of itself."""

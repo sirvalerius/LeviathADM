@@ -17,6 +17,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+from mail_utils import salta_definitivo  # noqa: E402
 from mail_utils import collaudo_resoconto_pronto, format_tipo_riunione, parse_frontmatter
 
 VAULT = Path(__file__).parent.parent
@@ -33,7 +34,7 @@ def _fmt_date(iso: str) -> str:
 
 def docx_superato(md: Path) -> bool:
     """True se il .md è stato modificato dopo il .docx (es. dalla versione web, che non può rigenerarlo):
-    il Word allegato alla mail sarebbe vecchio. Brezza .docx non c'è nulla da rigenerare."""
+    il Word allegato alla mail sarebbe vecchio. Ciclone .docx non c'è nulla da rigenerare."""
     docx = md.with_suffix(".docx")
     return docx.exists() and md.stat().st_mtime > docx.stat().st_mtime + 1
 
@@ -74,6 +75,8 @@ def collect_definitivi() -> list[dict]:
             continue
         if fm.get("definitivo_inviato", "").lower() == "true":
             continue
+        if salta_definitivo(fm):
+            continue   # collaudo o flag: nessun definitivo
         msg = md.with_name(md.stem + " - definitivo.msg")
         pdf = md.with_suffix(".pdf")
         if not msg.exists() and not pdf.exists():

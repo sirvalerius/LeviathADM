@@ -377,17 +377,17 @@ if __name__ == "__main__":
         "adm_participants": [
             ("(PM) DOTD - ATTUAZIONE PROGETTI E SICUREZZA INFORMATICA", "", "Astolfo Lunardi"),
             ("(RA) DOTD - GOVERNO E TRANSIZIONE DIGITALE",              "", "Uragano Venusta"),
-            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Nevischio Demetrio"),
-            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Libeccio Urbano"),
-            ("(RB) DGIO",                                               "", "Dirupo Ortensio"),
+            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Ortensia Ersilia"),
+            ("(RP) DODT - ANALISI E PROCESSI",                          "", "Maestrale Venusta"),
+            ("(RB) DGIO",                                               "", "Estuario Prudenzia"),
             ("DGIO - Ufficio Territoriale",                             "", "Uragano Cassiopea"),
             ("DGIO - Ufficio Antifrode",                                "", "Aquilone Amerigo"),
-            ("DGIO - Ufficio Territoriale",                             "", "Pennacchio Brunilde"),
+            ("DGIO - Ufficio Territoriale",                             "", "Quadrante Cassiopea"),
         ],
         "sogei_participants": [
             "Dirupo Ipazia",
-            "Burrasca Gelsomina",
-            "Tramontana Fulgenzio",
+            "Cumulo Ipazia",
+            "Uragano Gelsomina",
         ],
         "obiettivo_testo": (
             "In data 12 maggio 2026 si e svolta la prima riunione di analisi, tenutasi a distanza, "
@@ -406,7 +406,7 @@ if __name__ == "__main__":
             "al flusso sanzionatorio. E emersa la necessita di definire quale tipo di visualizzazione "
             "rendere disponibile agli uffici e quale lavorazione, se prevista, essi debbano effettuare "
             "a fronte dei dati ricevuti. La progettazione dell'interfaccia sara curata da Anna Virginia "
-            "Tramontana (SOGEI) nell'ambito della reingegnerizzazione del SIC.",
+            "Uragano (SOGEI) nell'ambito della reingegnerizzazione del SIC.",
 
             "Il secondo punto riguarda lo scambio reciproco delle date di controllo tra ADM e Guardia "
             "di Finanza, al fine di evitare che lo stesso esercizio venga sottoposto a verifiche "
@@ -414,9 +414,9 @@ if __name__ == "__main__":
 
             "Il terzo punto riguarda il completamento dell'integrazione con il sistema ARES, controparte "
             "extratributaria del MUV per la parte amministrativa. A differenza del MUV, il servizio con "
-            "ARES e ancora da definire nel flusso di scambio dati. La dottoressa Dirupo ha rappresentato "
+            "ARES e ancora da definire nel flusso di scambio dati. La dottoressa Estuario ha rappresentato "
             "la necessita di affidare la gestione di ARES a un unico referente per garantire continuita, "
-            "e ha comunicato che si coordinera con il dottor Pennacchio e con Gianluca Ciaravola per definire "
+            "e ha comunicato che si coordinera con il dottor Quadrante e con Gianluca Ciaravola per definire "
             "l'assegnazione.",
 
             "Nel corso del confronto con gli uffici territoriali e emerso che il flusso tributario su "
@@ -429,11 +429,11 @@ if __name__ == "__main__":
             "rilevata come priorita da affrontare in parallelo.",
         ],
         "azioni_testi": [
-            "Tramontana Fulgenzio (SOGEI) predisporra una proposta di prototipo per la visualizzazione "
+            "Uragano Gelsomina (SOGEI) predisporra una proposta di prototipo per la visualizzazione "
             "dei dati GDF sul SIC entro fine maggio / primi di giugno 2026, previo allineamento interno "
-            "con Burrasca Stefano.",
+            "con Cumulo Stefano.",
 
-            "Dirupo Ortensio (ADM) si coordinera con il dottor Pennacchio e Gianluca Ciaravola per "
+            "Estuario Prudenzia (ADM) si coordinera con il dottor Quadrante e Gianluca Ciaravola per "
             "definire il referente responsabile del sistema ARES e del collegamento SIC-STAMPS per il "
             "flusso tributario.",
 

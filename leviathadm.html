@@ -73,7 +73,7 @@ a.bottone { display: inline-block; border: 1px solid var(--primary); border-radi
 window.LV = window.LV || {};
 (function (LV) {
   'use strict';
-  LV.VERSIONE = '1.0.0';   // versioning dal 2026-10-19: un documento per versione in docs/versioni/ (test_versioni.py)
+  LV.VERSIONE = '1.5.0';   // versioning dal 2026-10-19: un documento per versione in docs/versioni/ (test_versioni.py)
   LV.esc =(s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ascolto = {};
   LV.on = (nome, fn) => { (ascolto[nome] ||= []).push(fn); };
@@ -287,7 +287,7 @@ window.LV = window.LV || {};
              team_raw: (sez.Team || '').trim(), resoconti: ordinaResoconti(resoconti || []), verbali: [...(verbali || [])].sort(),
              sezioni: sez, problemi, attivo: stato.trim().toLowerCase() !== 'rinominato' };
   }
-  LV.modelli = { RESOCONTO_RE, notaId, isSchedaRilascio, tipoNota, parseNota, parseResoconto, ordinaResoconti, parseRilascio, cartella, nome, stemDi };
+  LV.modelli = { RESOCONTO_RE, notaId, isSchedaRilascio, tipoNota, parseNota, parseResoconto, ordinaResoconti, parseRilascio, cartella, nome, stemDi, riunioni };
 })(window.LV);
 
 /* === 25_scrittura.js === */
@@ -302,6 +302,9 @@ window.LV = window.LV || {};
   const CAMPI_DATE = [['data_fine_analisi', 'Fine analisi'], ['data_disponibilita_collaudo', 'Disponibilità collaudo'],
                       ['data_collaudo_prevista', 'Collaudo previsto'], ['data_collaudo_effettiva', 'Collaudo effettivo'],
                       ['data_rilascio_prevista', 'Rilascio previsto'], ['data_rilascio_effettiva', 'Rilascio effettivo']];
+  const CAMPI_PROTOCOLLI = [['protocollo_analisi', 'Analisi'], ['protocollo_approvazione_analisi', 'Approvazione analisi'],
+                           ['protocollo_disponibilita_collaudo', 'Disponibilità a collaudo'], ['protocollo_collaudo', 'Collaudo'],
+                           ['protocollo_estensione_esercizio', 'Estensione esercizio']];
   const CODICE_RE = /^ADM\d{3}-\d{2}-[0-9A-Z]{2}$/;
   const VIETATI = /[\\/:*?"<>|]/;
 
@@ -395,7 +398,50 @@ data_disponibilita_collaudo:
 `;
     return { rel: `PO ${anno}/${cod}/${cod}.md`, text };
   }
-  LV.scrittura = { STATI, CAMPI_TEAM, CAMPI_DATE, CODICE_RE, VIETATI, validaDateIso, diffCampi, creaPersonaTesto, creaRilascioTesto };
+  LV.scrittura = { STATI, CAMPI_TEAM, CAMPI_DATE, CAMPI_PROTOCOLLI, CODICE_RE, VIETATI, validaDateIso, diffCampi, creaPersonaTesto, creaRilascioTesto };
+})(window.LV);
+
+/* === 26_stato.js === */
+/* Avanzamento dello stato del punto di piano: replica di scripts/avanza_stato.py (golden `stato`).
+   Solo in avanti, mai Rinominato, mai con stato_manuale: true. */
+(function (LV) {
+  'use strict';
+  const ORDINE = ['Da Avviare', 'Bozza', 'Startup', 'Analisi', 'In corso', 'In Verifica', 'Collaudo', 'Concluso'];
+  const RINOMINATO = 'Rinominato';
+  const rango = (s) => ORDINE.indexOf((s || '').trim());
+  const vero = (v) => (v || '').trim().toLowerCase() === 'true';
+  const pieno = (v) => !!(v || '').trim();
+  const dataPassata = (v, oggiIso) => { const s = (v || '').trim(); return LV.cruscotto.isoValida(s) && s <= oggiIso; };
+
+  function suggerisci(fm, riunioni, oggiIso) {
+    const fasi = (riunioni || []).map((r) => [((r.fase || '')).trim().toLowerCase(), !!r.inviato]);
+    const g = (k) => fm[k] || '';
+    if (dataPassata(g('data_rilascio_effettiva'), oggiIso) || pieno(g('protocollo_estensione_esercizio')) || vero(g('estensione_esercizio_protocollata'))) return 'Concluso';
+    if (dataPassata(g('data_collaudo_effettiva'), oggiIso) || pieno(g('protocollo_collaudo')) || fasi.some(([f, inv]) => f.startsWith('collaudo') && inv)
+        || ['trasmissione_verbale_in_firma', 'trasmissione_verbale_protocollata', 'estensione_esercizio_in_firma'].some((k) => vero(g(k)))) return 'Collaudo';
+    if (pieno(g('protocollo_disponibilita_collaudo')) || pieno(g('data_disponibilita_collaudo')) || fasi.some(([f]) => f.startsWith('collaudo'))) return 'In Verifica';
+    if (fasi.some(([f]) => f.startsWith('sal')) || pieno(g('protocollo_analisi')) || pieno(g('protocollo_approvazione_analisi'))) return 'In corso';
+    if (fasi.some(([f]) => f.includes('analisi'))) return 'Analisi';
+    if (fasi.some(([f]) => f.startsWith('startup'))) return 'Startup';
+    return null;
+  }
+
+  function avanza(fm, riunioni, oggiIso) {   // nuovo stato da scrivere, o null
+    const stato = (fm.stato || '').trim();
+    if (stato === RINOMINATO || vero(fm.stato_manuale)) return null;
+    const s = suggerisci(fm, riunioni, oggiIso);
+    return s && rango(s) > rango(stato) ? s : null;
+  }
+
+  function avanzamento(r, oggiIso) {   // rilascio.avanzamento_stato: {da, a, manuale} per badge e pulsante, o null
+    const fm = r.frontmatter || {};
+    if ((fm.stato || '').trim() === RINOMINATO) return null;
+    const s = suggerisci(fm, r.riunioni || [], oggiIso);
+    if (!s || rango(s) <= rango(r.stato)) return null;
+    return { da: r.stato || '', a: s, manuale: vero(fm.stato_manuale) };
+  }
+
+  LV.stato = { ORDINE, RINOMINATO, rango, suggerisci, avanza, avanzamento };
 })(window.LV);
 
 /* === 27_resoconti.js === */
@@ -762,15 +808,27 @@ data_disponibilita_collaudo:
     }
     return result;
   }
-  const ruolo = (sigla, nome, info) => { const i = info(nome) || {}; const t = [(i.direzione || '').trim(), (i.ufficio || '').trim()].filter(Boolean).join(' – '); return sigla ? rstrip(`(${sigla}) ${t}`) : t; };
+  const ruolo = (sigla, nome, info) => { const i = info(nome) || {}, d = (i.direzione || '').trim(); return [sigla ? rstrip(`(${sigla}) ${d}`) : d, (i.ufficio || '').trim()]; };   // [ruolo, ufficio]: (SIGLA) DIREZIONE | UFFICIO (dal 2026-10-23)
   const stesso = (a, b) => { const s = (x) => new Set(x.toLowerCase().split(/\s+/).filter(Boolean)); const A = s(a), B = s(b); return A.size === B.size && [...A].every((x) => B.has(x)); };
   const sogeiOrdinati = (nomi, fm) => { const ref = (fm.referente_sogei || '').trim(); const primi = nomi.filter((n) => ref && stesso(n, ref)); return primi.concat(nomi.filter((n) => !primi.includes(n))); };
-  const partecipantiDaTeam = (fm, team, info) => ({ adm: ['PM', 'RA', 'RP', 'RB'].flatMap((s) => (team[s] || []).map((nome) => ({ ruolo: ruolo(s, nome, info), ufficio: '', nome }))), sogei: sogeiOrdinati([...(team.SOGEI || [])], fm) });
-  function creaScheletro(fm, etichetta, dataIso, { team, variante = null, verbale = null, trascritto = '', info = () => ({}), oggiIso }) {
+  const partecipantiDaTeam = (fm, team, info) => ({ adm: ['PM', 'RA', 'RP', 'RB'].flatMap((s) => (team[s] || []).map((nome) => { const [r, u] = ruolo(s, nome, info); return { ruolo: r, ufficio: u, nome }; })), sogei: sogeiOrdinati([...(team.SOGEI || [])], fm) });
+  const ORDINE_SIGLE = { '(PM)': 0, '(RA)': 1, '(RP)': 2, '(RB)': 3 };
+  const ordinaAdm = (adm) => [...adm].sort((a, b) => (ORDINE_SIGLE[a.ruolo.split(' ')[0]] ?? 9) - (ORDINE_SIGLE[b.ruolo.split(' ')[0]] ?? 9));   // sort stabile come sorted()
+  function partecipantiDaPresenze(presenze, team, fm, info) {   // resoconti.partecipanti_da_presenze: sigla se il nome coincide con un membro del team, nome come nel CSV
+    const adm = (presenze.adm || []).map((p) => {
+      let sigla = '', nomeAnag = p.nome;
+      for (const s of ['PM', 'RA', 'RP', 'RB']) { const t = (team[s] || []).find((x) => stesso(p.nome, x)); if (t !== undefined) { sigla = s; nomeAnag = t; break; } }
+      const [r, u] = ruolo(sigla, nomeAnag, info);
+      return { ruolo: r, ufficio: u, nome: p.nome };
+    });
+    return { adm: ordinaAdm(adm), sogei: sogeiOrdinati((presenze.sogei || []).map((p) => p.nome), fm) };
+  }
+  function creaScheletro(fm, etichetta, dataIso, { team, variante = null, verbale = null, trascritto = '', info = () => ({}), oggiIso, presenze = null }) {
     const codice = fm.codice_rilascio || '', collaudo = etichetta === 'Collaudo';
     if (collaudo && !(variante in R.CHIUSURE)) throw new Error('variante di collaudo obbligatoria: firma | telematica | telematica_in_riunione');
-    const { adm, sogei } = partecipantiDaTeam(fm, team, info);
-    const nota = R.NOTA_INCOMPLETA;
+    const conPresenze = !!(presenze && ((presenze.adm || []).length || (presenze.sogei || []).length));
+    const { adm, sogei } = conPresenze ? partecipantiDaPresenze(presenze, team, fm, info) : partecipantiDaTeam(fm, team, info);
+    const nota = conPresenze ? '' : R.NOTA_INCOMPLETA;
     const riunione = { DATA: it(dataIso), Canale: 'MICROSOFT TEAMS' };
     const resoconto = { 'COMPILATO DA': 'Astolfo Lunardi', 'DATA COMPILAZIONE': it(oggiIso), 'Approvato da': 'Partecipanti', 'Data approvazione': '' };
     const obiettivo = { 'CODICE PROGETTO': fm.codice_progetto || '', 'DESCRIZIONE PROGETTO': fm.descrizione_progetto || '', 'CODICE SOTTOPROGETTO': fm.codice_sottoprogetto || '',
@@ -833,13 +891,31 @@ data_disponibilita_collaudo:
     if (resto.every((x) => x === '—' || x === '-')) righe[ultima] = nuova; else righe.splice(ultima + 1, 0, nuova);
     return salvaSezioni(text, { Riunioni: righe.join('\n') });
   }
+  function completaRigaRiunione(text, dataIso, faseTab, trascritto) {   // writers.completa_riga_riunione: null = nessuna modifica
+    const { blocchi } = spezzaFile(text);
+    const b = blocchi.find((x) => x.heading === 'Riunioni');
+    const righe = b ? b.body.split('\n') : [];
+    const idxTab = righe.map((r, i) => (r.trim().startsWith('|') ? i : -1)).filter((i) => i >= 0);
+    const header = idxTab.length ? celleDi(righe[idxTab[0]]) : [];
+    for (const i of idxTab.slice(2)) {
+      const c = celleDi(righe[i]);
+      if (c.length >= 4 && c[0] === dataIso && c[1] === faseTab) {
+        if (header.length < 5) return null;                       // nessuna colonna trascritto
+        if (c[2].replace(/[` ]/g, '')) return null;                // già presente: mai sovrascrivere
+        c[2] = `\`${trascritto}\``;
+        righe[i] = '| ' + c.join(' | ') + ' |';
+        return salvaSezioni(text, { Riunioni: righe.join('\n') });
+      }
+    }
+    return aggiungiRiunione(text, dataIso, faseTab, trascritto, '—');
+  }
   function setRiunioneInviata(text, stem, inviata) {
     const [da, a] = inviata ? ['❌', '✅'] : ['✅', '❌'];
     const rx = new RegExp(`(\\|[^\\n]*\\[\\[${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\]]*\\]\\][^\\n]*)\\|\\s*${da}\\s*\\|`, 'g');
     return text.replace(rx, `$1| ${a} |`);
   }
   LV.sk = { FASI, rangoFase, fasiAmmesse, prossimoSal, etichettaFase, faseTabella, titoloResoconto, nomeFile, formatDateIt, formulaObiettivo, argomentiCollaudo,
-    teamFromRelease, partecipantiDaTeam, creaScheletro, salvaSezioni, aggiungiRiunione, setRiunioneInviata };
+    teamFromRelease, partecipantiDaTeam, partecipantiDaPresenze, ordinaAdm, creaScheletro, salvaSezioni, aggiungiRiunione, completaRigaRiunione, setRiunioneInviata };
 })(window.LV);
 
 /* === 30_vault.js === */
@@ -887,9 +963,32 @@ data_disponibilita_collaudo:
   }
 
   // ---- accesso alla cartella -------------------------------------------------------------
-  // Nessun handle memorizzato: le pagine file:// condividono l'origine, e un "Riapri <cartella>" mostrerebbe il nome
-  // dell'ultimo vault aperto da qualunque copia di leviathadm.html. Il database delle versioni precedenti viene rimosso.
-  try { indexedDB.deleteDatabase('leviathadm'); } catch (e) { /* storage non disponibile: niente da cancellare */ }
+  // Handle dell'ultima cartella aperta, memorizzato in IndexedDB (web 1.5.0). Le pagine file:// condividono l'origine:
+  // la chiave è il percorso di QUESTA copia di leviathadm.html, così ogni copia ricorda il proprio vault e "Riapri"
+  // non mostra mai il vault aperto da un'altra copia. Il permesso readwrite viene richiesto di nuovo al clic su Riapri.
+  const DB = 'leviathadm', STORE = 'handles', CHIAVE_HANDLE = location.pathname || 'vault';
+  function db() {
+    return new Promise((ok, ko) => {
+      const req = indexedDB.open(DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+      req.onsuccess = () => ok(req.result);
+      req.onerror = () => ko(req.error);
+    });
+  }
+  async function salvaHandle(h) {
+    const d = await db();
+    await new Promise((ok, ko) => { const t = d.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(h, CHIAVE_HANDLE); t.oncomplete = ok; t.onerror = () => ko(t.error); });
+  }
+  async function leggiHandle() {
+    const d = await db();
+    return new Promise((ok, ko) => { const r = d.transaction(STORE).objectStore(STORE).get(CHIAVE_HANDLE); r.onsuccess = () => ok(r.result || null); r.onerror = () => ko(r.error); });
+  }
+  async function dimenticaCartella() {
+    const d = await db();
+    await new Promise((ok, ko) => { const t = d.transaction(STORE, 'readwrite'); t.objectStore(STORE).delete(CHIAVE_HANDLE); t.oncomplete = ok; t.onerror = () => ko(t.error); });
+  }
+  async function riapri() { const h = await leggiHandle().catch(() => null); if (!h) throw new Error('Nessuna cartella memorizzata per questa copia dell\'app.'); return apriHandle(h); }
+  async function nomeCartellaSalvata() { const h = await leggiHandle().catch(() => null); return h ? h.name : null; }
   async function leggiTesto(file) {   // UTF-8 con eventuale BOM: text() lo toglie in silenzio, quindi si guardano i byte
     if (typeof file.arrayBuffer !== 'function') return { testo: await file.text(), bom: false };   // handle finti minimi dei test
     const buf = await file.arrayBuffer();
@@ -1181,6 +1280,10 @@ data_disponibilita_collaudo:
     const dir = dirRilascioDi(res.rel), n = dir.split('/').length + 1;
     return Object.keys(LV.indice.files).filter((k) => k.startsWith(`${dir}/`) && k.split('/').length === n && /\.pdf$/i.test(k)).sort();
   }
+  function pdfDelRilascioEFonti(dirRilascio) {   // precompila_collaudo: root del rilascio + _fonti/**, per nome del file minuscolo
+    return Object.keys(LV.indice.files).filter((k) => (k.startsWith(`${dirRilascio}/_fonti/`) || (k.startsWith(`${dirRilascio}/`) && k.split('/').length === dirRilascio.split('/').length + 1)) && /\.pdf$/i.test(k))
+      .sort((a, b) => a.split('/').at(-1).toLowerCase().localeCompare(b.split('/').at(-1).toLowerCase()));
+  }
   async function leggiTemplateTesto(nome) {
     const rel = `Template/${nome}`;
     if (!(rel in LV.indice.files)) throw new Error(`template mail assente nel vault: ${rel}`);
@@ -1215,6 +1318,7 @@ data_disponibilita_collaudo:
   async function _generaMailDefinitiva(res) {
     const d = datiMail(res);
     if ((d.fm.inviato || '').trim().toLowerCase() !== 'true') throw new Error('resoconto non inviato: la versione definitiva segue l\'approvazione');
+    if (LV.cruscotto.saltaDefinitivo(d.fm)) throw new Error('resoconto di collaudo: nessuna versione definitiva, il collaudo si chiude con le lettere di fine collaudo');
     const appr = LV.md.parseData(d.fm.data_approvazione || '');
     if (!appr) throw new Error('senza data_approvazione: prima "Chiudi approvazione"');
     const relPdf = res.rel.replace(/\.md$/, '.pdf');
@@ -1226,6 +1330,97 @@ data_disponibilita_collaudo:
     await scriviBinario(relMsg, LV.mail.msg({ oggetto: LV.mail.oggetto(d.codice, d.tipo, d.dataRiu, true), a: d.dest.a, corpo,
                                               allegati: [{ nome: relPdf.split('/').at(-1), dati: await leggiBinario(relPdf), tipo: 'application/pdf' }] }));
     return { msg: relMsg, a: d.dest.a, mancanti: d.dest.mancanti };
+  }
+  // ---- convocazioni (fase 7): genera_convocazione_startup / _collaudo — .eml con invito + PDF, Verbale mai sovrascritto ----
+  const generaConvocazione = (o) => inBlocco(() => _generaConvocazione(o));
+  async function _generaConvocazione({ schedaRel, tipo, dataIso, ora, durata, organizzatore, alternative = [], pdfRel = null, documento = '', verifiche = [] }) {
+    const f = LV.indice.files[schedaRel];
+    if (!f || f.text === null) throw new Error(`Scheda non in indice: ${schedaRel}`);
+    const fm = LV.md.parseFrontmatter(f.text), dir = schedaRel.split('/').slice(0, -1).join('/');
+    const codice = (fm.codice_rilascio || '').trim() || schedaRel.split('/').at(-1).replace(/\.md$/, '');
+    const descrizione = (fm.descrizione_rilascio || '').trim() || codice;
+    const startup = tipo === 'startup';
+    if (!startup && !(/^[\x20-\x7e]+$/.test(documento) && !/["<>:\/\\|?*]/.test(documento))) throw new Error('Documento di analisi: solo caratteri ASCII, senza " < > : / \\ | ? * (diventa il nome dell\'allegato PDF)');
+    const dest = LV.conv.destinatari(f.text, LV.indice, { startup });
+    const template = await leggiTemplateTesto(startup ? 'Template - Mail di invito startup.txt' : 'Template - Mail di convocazione Collaudo.txt');
+    const corpo = startup ? LV.conv.corpoStartup(template, { codice, fm, dataIso, ora, alternative })
+      : LV.conv.corpoCollaudo(template, { codice, descrizione, dataIso, ora, documento, verifiche });
+    const allegato = startup ? null : { nome: `${documento} - Piano di Test.pdf`, bytes: await leggiBinario(pdfRel) };   // PDF illeggibile: errore prima di ogni scrittura
+    const calendario = LV.conv.ics({ codice, descrizione, dataIso, ora, durata, corpo, organizzatore, a: dest.a, cc: dest.cc, tipo });
+    const relEml = `${dir}/${LV.conv.nomeEml(codice, dataIso, tipo)}`;
+    await scriviBinario(relEml, LV.conv.eml({ oggetto: LV.conv.oggetto(tipo, codice, descrizione), corpo, organizzatore, a: dest.a, cc: dest.cc, calendario, allegato }));
+    let verbale = null, verbaleEsistente = false, verbaleRinominato = null, bozzaEliminata = null;
+    if (!startup) {
+      const inRoot = (k) => k.startsWith(`${dir}/`) && k.split('/').length === dir.split('/').length + 1, re = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // "Collaudo già svolto" (esito compilato, data già passata, data_collaudo_effettiva nella scheda): bozza e Verbale di quel collaudo
+      // restano com'erano; altrimenti, al cambio di data, la bozza precedente non inviata viene eliminata e il Verbale rinominato.
+      const oggi = LV.cruscotto.oggi(), effettiva = LV.md.parseData(fm.data_collaudo_effettiva || '');
+      const dataNelNome = (k) => { const m = /(\d{4})(\d{2})(\d{2})/.exec(k.split('/').at(-1).slice(codice.length)); return m ? `${m[1]}-${m[2]}-${m[3]}` : ''; };
+      const vecchieEml = Object.keys(LV.indice.files).filter((k) => inRoot(k) && k !== relEml && new RegExp(`^${re(codice)} - \\d{8} Convocazione Collaudo\\.eml$`).test(k.split('/').at(-1))
+        && !effettiva && !(dataNelNome(k) < oggi));
+      for (const k of vecchieEml) { await eliminaFile(k); bozzaEliminata = k; }
+      verbale = `${dir}/${LV.conv.nomeVerbale(codice, dataIso)}`;
+      const giu = verbale.toLowerCase();
+      verbaleEsistente = Object.keys(LV.indice.files).some((k) => k.toLowerCase() === giu);   // come creaFile: NTFS non distingue le maiuscole
+      if (!verbaleEsistente) {
+        // Verbale di un'altra data di un collaudo non ancora svolto: rinominato alla nuova data, esiti spuntati conservati.
+        // "Già svolto" = esito compilato, o data del Verbale già passata (l'esito resta spesso vuoto anche a collaudo fatto),
+        // o data_collaudo_effettiva nella scheda: in quei casi il Verbale resta e se ne crea uno nuovo.
+        const nonSvolto = (k) => { const v = LV.md.parseFrontmatter(LV.indice.files[k].text || ''); const dv = LV.md.parseData(v.data_collaudo || '');
+          return !(v.esito_collaudo || '').trim() && !(dv && dv < oggi) && !effettiva; };
+        const candidati = Object.keys(LV.indice.files).filter((k) => inRoot(k) && new RegExp(`^${re(codice)} - \\d{8} Verbale di Collaudo\\.md$`).test(k.split('/').at(-1)) && nonSvolto(k)).sort();
+        if (candidati.length) {
+          const vecchio = candidati.at(-1);
+          await ricaricaFile(vecchio);   // testo dal disco, non dall'indice: spunte fatte da Obsidian o arrivate col sync non vanno perse
+          const fv = LV.indice.files[vecchio];
+          const nuovoTesto = LV.md.updateFrontmatterKeys(fv.text, { data_collaudo: dataIso, aggiornato: LV.cruscotto.oggi() })
+            .replace(/^(> Documento di analisi: .*Data collaudo: \*\*)\d{2}\/\d{2}\/\d{4}(\*\*)/m, `$1${ddmmyyyy(dataIso)}$2`);
+          await creaFile(verbale, nuovoTesto);
+          await eliminaFile(vecchio);
+          verbaleRinominato = vecchio;
+        } else await creaFile(verbale, LV.conv.verbale({ codice, descrizione, documento, verifiche, dataIso, oggiIso: LV.cruscotto.oggi() }));
+      }
+    }
+    return { eml: relEml, verbale, verbaleEsistente, verbaleRinominato, bozzaEliminata, a: dest.a, cc: dest.cc, mancanti: dest.mancanti };
+  }
+  // ---- lettere di fine collaudo (fase 8): .docx dai template nella root del rilascio; PDF e cartella firma restano al sync del master ----
+  function letteraEsistente(dirRilascio, label) {   // stesso glob di daFirmare: qualunque *<Lettera>.docx della root, anche con l'altra forma del nome
+    const n = dirRilascio.split('/').length + 1, suff = `${label}.docx`.toLowerCase();
+    return Object.keys(LV.indice.files).filter((k) => k.startsWith(`${dirRilascio}/`) && k.split('/').length === n && k.split('/').at(-1).toLowerCase().endsWith(suff)).sort()[0] || null;
+  }
+  const generaLettere = (o) => inBlocco(() => _generaLettere(o));
+  async function _generaLettere({ schedaRel, lettere, dati, sovrascrivi = false }) {
+    const f = LV.indice.files[schedaRel];
+    if (!f || f.text === null) throw new Error(`Scheda non in indice: ${schedaRel}`);
+    const fm = LV.md.parseFrontmatter(f.text), dir = schedaRel.split('/').slice(0, -1).join('/');
+    const codice = (fm.codice_rilascio || '').trim() || schedaRel.split('/').at(-1).replace(/\.md$/, '');
+    if (lettere.includes('trasmissione') && !((dati.adm || []).length && (dati.sogei || []).length)) throw new Error('almeno un nome ADM e uno SOGEI per la Trasmissione copia verbale');
+    if (lettere.includes('estensione') && !((dati.direzione || '').trim() && (dati.ufficio || '').trim())) throw new Error('Direzione e Ufficio del referente business sono obbligatori per la Richiesta estensione in esercizio (riga e, p.c.)');
+    const pronti = [];   // prima tutti i byte (template e riempimento), poi le scritture: un errore non lascia file a metà
+    for (const tipo of lettere) {
+      const label = LV.lettere.etichetta(tipo), relTpl = `Template/Template - ADMXXX-XX-XX ${label}.docx`;
+      if (!(relTpl in LV.indice.files)) throw new Error(`template assente nel vault: ${relTpl}`);
+      const tpl = await leggiBinario(relTpl);
+      pronti.push({ tipo, label, bytes: tipo === 'trasmissione' ? await LV.lettere.riempiTrasmissione(tpl, dati) : await LV.lettere.riempiEstensione(tpl, dati) });
+    }
+    const esiti = [], avvisi = [];
+    for (const p of pronti) {
+      const esistente = letteraEsistente(dir, p.label);
+      if (esistente && !sovrascrivi) { esiti.push({ tipo: p.tipo, rel: esistente, stato: 'esistente', svuotati: [] }); continue; }
+      const svuotati = [];
+      if (esistente) {   // build_da_firmare prepara i PDF solo per le lettere in "Da mandare in firma": una lettera già in firma va riportata indietro
+        const fieldBase = p.tipo === 'trasmissione' ? 'trasmissione_verbale' : 'estensione_esercizio';
+        if ((fm[`${fieldBase}_in_firma`] || '').trim().toLowerCase() === 'true') avvisi.push(`${p.label}: lettera già in firma — riportala in Da mandare (campo ${fieldBase}_in_firma nella scheda) perché il sync del master rifaccia i PDF`);
+      }
+      const rel = esistente || `${dir}/${LV.lettere.nomeFile(codice, p.tipo)}`;
+      await scriviBinario(rel, p.bytes);
+      if (esistente) {   // dopo la lettera: prepara_firma del master rifà i PDF solo se la cartella è vuota (altrimenti su Arcipelago andrebbe la lettera vecchia); se la scrittura fallisce i PDF restano
+        const pref = `${dir}/da mandare in firma/${p.label}/`;
+        for (const k of Object.keys(LV.indice.files).filter((k) => k.startsWith(pref)).sort()) { await eliminaFile(k); svuotati.push(k); }
+      }
+      esiti.push({ tipo: p.tipo, rel, stato: esistente ? 'sovrascritta' : 'creata', svuotati });
+    }
+    return { esiti, avvisi };
   }
   async function _segnaInviato(res, scheda, oggiIso) {   // archivia_bozza: .docx/.msg/.md in inviati/, inviato: true + scadenza +5gg lavorativi, ✅ nella scheda
     const stem = res.stem, dir = res.rel.split('/').slice(0, -1).join('/');
@@ -1251,7 +1446,8 @@ data_disponibilita_collaudo:
     const testoScheda = LV.sk.setRiunioneInviata(s.text, stem, true);
     if (testoScheda !== s.text) { try { await scriviFile(scheda.rel, testoScheda, s.lastModified); } catch (e) { avvisi.push(`scheda non aggiornata (${e.message}): metti ✅ a mano nella riga Riunioni`); } }
     else if (!s.text.includes(`[[${stem}`)) avvisi.push('riga Riunioni non trovata nella scheda: nessun ✅ scritto');
-    return { nuovo, scadenza, avvisi };
+    const stato = await avanzaStato(scheda.rel, oggiIso).catch((e) => { avvisi.push(`stato non avanzato (${e.message})`); return null; });
+    return { nuovo, scadenza, avvisi, stato };
   }
   const segnaConvocazioneInviata = (relEml) => inBlocco(() => _segnaConvocazioneInviata(relEml));
   async function _segnaConvocazioneInviata(relEml) {   // archivia_convocazione: .eml (+ .ics) in inviati/
@@ -1263,20 +1459,33 @@ data_disponibilita_collaudo:
     await spostaConRollback(coppie);
     return { spostati: coppie.map(([, d]) => d) };
   }
+  async function avanzaStato(schedaRel, oggiIso) {   // writers.avanza_stato_dopo: stato solo in avanti dai fatti della scheda; {da, a} o null
+    const f = LV.indice.files[schedaRel];
+    if (!f || f.text === null) return null;
+    const fm = LV.md.parseFrontmatter(f.text);
+    const riunioni = LV.modelli.riunioni(LV.md.splitSections(LV.md.splitBody(f.text)).Riunioni || '');
+    const nuovo = LV.stato.avanza(fm, riunioni, oggiIso || LV.cruscotto.oggi());
+    if (!nuovo) return null;
+    await scriviFile(schedaRel, LV.md.updateFrontmatterKeys(f.text, { stato: nuovo }), f.lastModified);
+    return { da: (fm.stato || '').trim(), a: nuovo };
+  }
   async function aggiornaFm(rel, updates) { const f = LV.indice.files[rel]; if (!f || f.text === null) throw new Error(`file non in indice: ${rel}`); await scriviFile(rel, LV.md.updateFrontmatterKeys(f.text, updates), f.lastModified); }
   const segnaDefinitivoInviato = (rel) => aggiornaFm(rel, { definitivo_inviato: 'true' });
   async function registraCollaudo(schedaRel, dataIso, oggiIso) {   // writers.registra_collaudo: solo ISO valido, mai futura
     if (!LV.cruscotto.isoValida(dataIso)) throw new Error(`data non ISO (AAAA-MM-GG): ${dataIso}`);
     if (dataIso > oggiIso) throw new Error(`data futura: ${dataIso}`);
     await aggiornaFm(schedaRel, { data_collaudo_effettiva: dataIso });
+    return avanzaStato(schedaRel, oggiIso);
   }
   async function segnaLettera(schedaRel, fieldBase, stato) {
     if (stato !== 'in_firma' && stato !== 'protocollata') throw new Error(`stato lettera non valido: ${stato}`);
     await aggiornaFm(schedaRel, { [`${fieldBase}_${stato}`]: 'true' });
+    return avanzaStato(schedaRel);
   }
   async function chiudiApprovazione(rel, oggiIso) {   // writers.chiudi_approvazione_tacita: data_approvazione = data_scadenza_approvazione; PDF e .msg definitivo al sync del master
     const fm = LV.md.parseFrontmatter(LV.indice.files[rel]?.text || '');
     if ((fm.inviato || '').toLowerCase() !== 'true') throw new Error('resoconto non inviato');
+    if (LV.cruscotto.saltaDefinitivo(fm)) throw new Error('resoconto di collaudo: nessuna versione definitiva, il collaudo si chiude con le lettere di fine collaudo');
     if ((fm.data_approvazione || '').trim()) throw new Error('approvazione già registrata');
     const scadenza = (fm.data_scadenza_approvazione || '').trim();
     if (!scadenza) throw new Error('senza data_scadenza_approvazione');
@@ -1284,6 +1493,18 @@ data_disponibilita_collaudo:
     if (scadenza > oggiIso) throw new Error(`scadenza futura: ${scadenza}`);
     await aggiornaFm(rel, { data_approvazione: scadenza });
     return scadenza;
+  }
+  async function adottaDalDisco(rel) {   // file presente sul disco ma non in indice (sync, Obsidian): entra in indice senza scritture; false se non c'è
+    if (!LV.indice.dirs) return false;
+    const nome = rel.split('/').at(-1), d = await cartellaSeEsiste(rel.split('/').slice(0, -1).join('/'));
+    if (!d) return false;
+    let h;
+    try { h = await d.getFileHandle(nome); } catch (e) { if (e.name !== 'NotFoundError') throw e; return false; }
+    const file = await h.getFile();
+    if (/\.md$/i.test(nome)) { const n = normalizzaTesto(await file.text()); LV.indice.files[rel] = { text: n.text, crlf: n.crlf, lastModified: file.lastModified, handle: h }; }
+    else LV.indice.files[rel] = { text: null, lastModified: file.lastModified, handle: h };
+    reindicizza();
+    return true;
   }
   async function ricaricaFile(rel) {
     const f = LV.indice.files[rel];
@@ -1293,7 +1514,9 @@ data_disponibilita_collaudo:
   async function apriCartella() {
     if (!window.showDirectoryPicker) throw new Error('Questo browser non permette di aprire cartelle (serve Edge o Chrome con File System Access abilitato).');
     const h = await window.showDirectoryPicker({ mode: 'readwrite' });
-    return apriHandle(h);
+    const idx = await apriHandle(h);
+    await salvaHandle(h).catch(() => {});   // storage non disponibile (es. finestra privata): si apre comunque
+    return idx;
   }
   async function ricarica() { if (!LV.indice) throw new Error('Apri prima un vault: nessun indice da ricaricare.'); return handleCorrente ? apriHandle(handleCorrente) : apriDaMappa(LV.indice.files); }
   function rilascioPerCartella(dir) {   // la scheda <dir>/<cartella>.md, anche se codice_rilascio è diverso dalla cartella (rilasci rinominati/confluiti)
@@ -1303,10 +1526,10 @@ data_disponibilita_collaudo:
   }
   function rilascio(codice) { for (const anno of LV.indice?.anni || []) { const r = LV.indice.piani[anno].rilasci[codice]; if (r) return r; } return null; }
   function annoDefault() { const oggi = new Date().getFullYear(); const anni = LV.indice?.anni || []; return anni.includes(oggi) ? oggi : (anni[0] || oggi); }
-  LV.vault = { ESCLUSE, escluso, normalizzaTesto, costruisciIndice, apriDaMappa, apriHandle, apriCartella, ricarica, rilascio, annoDefault,
+  LV.vault = { ESCLUSE, escluso, normalizzaTesto, costruisciIndice, apriDaMappa, apriHandle, apriCartella, riapri, nomeCartellaSalvata, dimenticaCartella, salvaHandle, CHIAVE_HANDLE, ricarica, rilascio, annoDefault,
                ConflittoModifica, scriviFile, creaFile, ricaricaFile, reindicizza, inBlocco, spostaFile, eliminaFile, riportaInBozza, rilascioPerCartella,
-               segnaInviato, segnaConvocazioneInviata, segnaDefinitivoInviato, registraCollaudo, segnaLettera, chiudiApprovazione,
-               leggiBinario, scriviBinario, rigeneraDocx, pdfDelRilascio, generaMail, generaMailDefinitiva };
+               segnaInviato, segnaConvocazioneInviata, segnaDefinitivoInviato, registraCollaudo, segnaLettera, chiudiApprovazione, avanzaStato,
+               leggiBinario, scriviBinario, adottaDalDisco, rigeneraDocx, pdfDelRilascio, pdfDelRilascioEFonti, generaMail, generaMailDefinitiva, generaConvocazione, letteraEsistente, generaLettere };
 })(window.LV);
 
 /* === 31_cfb.js === */
@@ -1797,7 +2020,8 @@ data_disponibilita_collaudo:
     return chiudiDocumento(d);
   }
 
-  LV.docx = { datiDaMd, nomeTemplate, riempi, impostaDataApprovazione, TEMPLATES };
+  LV.docx = { datiDaMd, nomeTemplate, riempi, impostaDataApprovazione, TEMPLATES,
+              apriDocumento, chiudiDocumento, figli, figlio, runs, runText, setRunText, setCellText, righe, celle, tabella, addTableRow, paraText, nonConforme };   // helper Word riusati da 42_lettere.js
 })(window.LV);
 
 /* === 34_mail.js === */
@@ -1949,6 +2173,7 @@ data_disponibilita_collaudo:
   const MESI = ['', 'gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
   const LETTERE = [['Trasmissione copia verbale di collaudo', 'trasmissione_verbale', 'protocollo_collaudo'],
                    ['Richiesta estensione in esercizio', 'estensione_esercizio', 'protocollo_estensione_esercizio']];
+  const saltaDefinitivo = (fm) => String(fm.salta_definitivo || '').trim().toLowerCase() === 'true' || String(fm.tipo_riunione || '').toLowerCase().includes('collaudo');   // mail_utils.salta_definitivo: flag o collaudo
   const ETICHETTE_SCADENZE = { tassative: '🚨 Tassative — convocazione collaudo', scadute: '🔴 Scadute', settimana: '🟡 Questa settimana', prossime: '⚪ Prossime' };
   const pad2 = (n) => String(n).padStart(2, '0');
   const aIso = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
@@ -2036,7 +2261,7 @@ data_disponibilita_collaudo:
       const parti = rel.split('/').slice(2, -1);
       if (parti.includes('_archivio') || parti.some((p) => p.startsWith('_storico'))) continue;
       const fm = fmDi(rel);
-      if (!(fm.tipo_riunione || '').trim() || low(fm.salta_definitivo) === 'true' || low(fm.inviato) !== 'true') continue;
+      if (!(fm.tipo_riunione || '').trim() || saltaDefinitivo(fm) || low(fm.inviato) !== 'true') continue;
       const scad = (fm.data_scadenza_approvazione || '').trim();
       if (!scad || (fm.data_approvazione || '').trim()) continue;
       const d = parseDate(scad);
@@ -2078,7 +2303,7 @@ data_disponibilita_collaudo:
       const p = rel.split('/');
       if (!inLavori(anno, rel) || p.length !== 4 || !p[1].startsWith('ADM') || p[2] !== 'inviati' || !rel.endsWith('.md') || !MO.nome(rel).includes(' - 20')) continue;
       const fm = fmDi(rel);
-      if (!(fm.data_approvazione || '').trim() || low(fm.definitivo_inviato) === 'true') continue;
+      if (!(fm.data_approvazione || '').trim() || low(fm.definitivo_inviato) === 'true' || saltaDefinitivo(fm)) continue;
       const stem = MO.stemDi(rel), dir = p.slice(0, -1).join('/');
       const hasMsg = esiste(`${dir}/${stem} - definitivo.msg`), hasPdf = esiste(rel.replace(/\.md$/, '.pdf'));
       if (!hasMsg && !hasPdf) continue;
@@ -2127,7 +2352,7 @@ data_disponibilita_collaudo:
       const p = rel.split('/');
       if (!inLavori(anno, rel) || p.length !== 4 || p[2] !== 'inviati' || !rel.endsWith('.md') || p.includes('_archivio')) continue;
       const fm = fmDi(rel);
-      if (low(fm.inviato) !== 'true' || low(fm.salta_definitivo) === 'true') continue;
+      if (low(fm.inviato) !== 'true' || saltaDefinitivo(fm)) continue;
       const scad = (fm.data_scadenza_approvazione || '').trim();
       if (!scad || (fm.data_approvazione || '').trim()) continue;
       if (!isoValida(scad) || scad > oggiIso) continue;
@@ -2171,7 +2396,7 @@ data_disponibilita_collaudo:
         const fase = normalizzaFase(m[3]);
         fasiViste.add(fase);
         const fm = fmDi(rel);
-        const entry = { data: m[2], inviato: low(fm.inviato) === 'true', definitivo: low(fm.definitivo_inviato) === 'true', salta: low(fm.salta_definitivo) === 'true',
+        const entry = { data: m[2], inviato: low(fm.inviato) === 'true', definitivo: low(fm.definitivo_inviato) === 'true', salta: saltaDefinitivo(fm),
                         ha_scadenza: !!(fm.data_scadenza_approvazione || '').trim(), rinominato, rel };
         entry.testo = cellaStatoInvio([entry]);
         ((matrix[d] ||= {})[fase] ||= []).push(entry);
@@ -2184,7 +2409,321 @@ data_disponibilita_collaudo:
     return { matrix, colonne };
   }
   LV.cruscotto = { MESI, LETTERE, ETICHETTE_SCADENZE, oggi, parseDate, isoValida, weekEnd, deltaLabel, fmtDate, fmtIt, businessDaysAfter, formatTipoRiunione, schede, tronca80, weekday,
-                   collaudoResocontoPronto, scadenze, bozze, convocazioni, definitivi, daCollaudare, daFirmare, approvazioniScadute, normalizzaFase, cellaStatoInvio, statoInvii };
+                   collaudoResocontoPronto, saltaDefinitivo, scadenze, bozze, convocazioni, definitivi, daCollaudare, daFirmare, approvazioniScadute, normalizzaFase, cellaStatoInvio, statoInvii };
+})(window.LV);
+
+/* === 36_presenze.js === */
+/* CSV presenze di Microsoft Teams: traduzione di scripts/parse_presenze.py (decodifica, sezione "2. Partecipanti",
+   normalizzazione dei nomi, classificazione per dominio, data dal nome file, ricerca del CSV di una data). */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const SUFFISSI = /\s*\((?:Esterno|Non verificato|Estero|Guest|Ospite|External|Unverified)\)\s*/gi;
+
+  function decodifica(bytes) {   // spec §3.2: BOM FF FE → UTF-16LE; EF BB BF → UTF-8 senza BOM; altrimenti UTF-8; errore → latin-1
+    const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    if (u.length >= 2 && u[0] === 0xFF && u[1] === 0xFE) return new TextDecoder('utf-16le').decode(u.subarray(2));
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(u); }   // ignoreBOM false: il BOM UTF-8 viene tolto
+    catch (e) { return new TextDecoder('latin1').decode(u); }
+  }
+  const isLettera = (ch) => /\p{L}/u.test(ch);
+  function title(s) {   // str.title() di Python: maiuscola dopo ogni carattere non alfabetico, il resto minuscolo
+    let out = '', prev = false;
+    for (const ch of s) {
+      if (isLettera(ch)) { out += prev ? ch.toLowerCase() : ch.toUpperCase(); prev = true; } else { out += ch; prev = false; }
+    }
+    return out;
+  }
+  function normalizzaNome(raw) {
+    let nome = raw.replace(SUFFISSI, '').trim();
+    if (nome === nome.toUpperCase()) nome = title(nome);
+    return nome;
+  }
+  function classifica(email) {
+    const e = (email || '').toLowerCase();
+    return e.includes('adm.gov.it') ? 'adm' : e.includes('sogei.it') ? 'sogei' : 'altro';
+  }
+  function dataDalNome(nomeFile) {
+    const m = /(\d{1,2})-(\d{1,2})-(\d{2})\.csv$/.exec(nomeFile);
+    if (!m) return null;
+    return `${2000 + +m[3]}-${String(+m[1]).padStart(2, '0')}-${String(+m[2]).padStart(2, '0')}`;
+  }
+  function parse(bytes, nomeFile) {
+    const righe = decodifica(bytes).split(/\r\n|\r|\n/);
+    const out = { titolo: '', data: dataDalNome(nomeFile || '') || '', adm: [], sogei: [], altri: [] };
+    for (const r of righe) {
+      if (r.includes('Titolo')) { const p = r.split('\t'); if (p.length >= 2) { out.titolo = p[1].trim().replace(/^"|"$/g, ''); break; } }
+    }
+    let dentro = false, header = false;
+    const visti = new Set();
+    for (const r of righe) {
+      const s = r.trim();
+      if (/^2\.\s*(Partecipanti|Participants)/.test(s)) { dentro = true; header = false; continue; }
+      if (dentro && /^3\./.test(s)) break;
+      if (!dentro) continue;
+      const parti = r.split('\t').map((p) => p.trim());
+      if (!header) { if (parti.length && ['nome', 'name'].includes(parti[0].toLowerCase())) header = true; continue; }
+      if (parti.length < 2 || !parti[0]) continue;
+      const nome = normalizzaNome(parti[0]), email = (parti[4] || '').toLowerCase(), ruolo = parti[6] || '';
+      const k = nome.toLowerCase();
+      if (visti.has(k)) continue;
+      visti.add(k);
+      const org = classifica(email);
+      if (org === 'adm') out.adm.push({ nome, email, ruolo_teams: ruolo });
+      else if (org === 'sogei') out.sogei.push({ nome, email });
+      else out.altri.push({ nome, email });
+    }
+    return out;
+  }
+  function trovaCsv(dirRilascio, dataIso) {   // find_presenze_csv con data nota: radice del rilascio o _fonti/**, giorno con o senza zero, mai un'altra data
+    if (!dataIso || !LV.indice) return null;
+    const [y, m, d] = dataIso.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const re = new RegExp(`(?<!\\d)${m}-0?${d}-${String(y).slice(2)}(?!\\d)`);
+    const radice = `${dirRilascio}/`, fonti = `${dirRilascio}/_fonti/`;
+    const candidati = Object.keys(LV.indice.files).filter((rel) => rel.toLowerCase().endsWith('.csv')
+      && ((rel.startsWith(radice) && !rel.slice(radice.length).includes('/')) || rel.startsWith(fonti))).sort();
+    return candidati.find((rel) => re.test(rel.split('/').at(-1))) || null;
+  }
+  LV.presenze = { decodifica, normalizzaNome, classifica, dataDalNome, parse, trovaCsv };
+})(window.LV);
+
+/* === 37_anagrafica_stub.js === */
+/* Anagrafica dai presenti di una riunione: traduzione di scripts/update_anagrafica.update_from_presenze
+   (stub byte-identici a _write_adm/sogei/unknown_stub, email completata se mancante, nome invertito riconosciuto). */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  function testoStub(nome, org, email) {
+    if (org === 'ADM') return `---\norganizzazione: ADM\ndirezione: \nufficio: \nemail: ${email}\nruolo_tipico:\n---\n\n# ${nome}\n\n[[ADM]]\n`;
+    if (org === 'SOGEI') return `---\norganizzazione: SOGEI\ndirezione:\nufficio:\nemail: ${email}\nruolo_tipico:\n---\n\n# ${nome}\n\n[[SOGEI]]\n`;
+    return `---\norganizzazione: [da verificare]\ndirezione:\nufficio:\nemail: ${email}\nruolo_tipico:\n---\n\n# ${nome}\n\n`;
+  }
+  function trova(nome) {   // persona dell'Anagrafica per nome file/titolo, senza distinguere maiuscole e accenti (NTFS non le distingue)
+    const k = LV.md.normalizza((nome || '').trim());
+    if (!k || !LV.indice) return null;
+    return Object.values(LV.indice.note).find((n) => n.tipo === 'persona' && (LV.md.normalizza(n.titolo) === k || LV.md.normalizza(LV.modelli.stemDi(n.rel)) === k)) || null;
+  }
+  async function completaEmail(nota, email) {   // _update_email_if_missing: solo se la riga `email:` esiste ed è vuota
+    if (!email || !email.includes('@')) return false;
+    const f = LV.indice.files[nota.rel];
+    if (!f || f.text === null || /^email:[ \t]*\S/m.test(f.text)) return false;   // [ \t], non \s: il Python con \s inghiotte l'a capo e non completa mai (bug, non replicato)
+    const nuovo = f.text.replace(/^email:[ \t]*$/m, `email: ${email}`);
+    if (nuovo === f.text) return false;
+    await LV.vault.scriviFile(nota.rel, nuovo, f.lastModified);
+    return true;
+  }
+  async function aggiornaDaPresenze(presenze) {
+    const out = { created: [], existing: [], aggiornati: [], errori: [] };
+    const gruppi = [['adm', 'ADM'], ['sogei', 'SOGEI'], ['altri', 'altro']];
+    for (const [chiave, org] of gruppi) {
+      for (const p of presenze[chiave] || []) {
+        const nome = (p.nome || '').trim(), email = p.email || '';
+        try {
+          if (org === 'altro') {
+            const parti = nome.split(/\s+/);
+            const invertito = parti.length >= 2 ? [...parti].reverse().join(' ') : null;
+            const canonica = invertito && trova(invertito);
+            if (canonica) { out.existing.push(canonica.titolo); continue; }
+          }
+          const nota = trova(nome);
+          if (nota) {
+            out.existing.push(nota.titolo);
+            if (await completaEmail(nota, email)) out.aggiornati.push(nota.titolo);
+            continue;
+          }
+          if (!nome) { out.errori.push('nome vuoto nel report presenze'); continue; }
+          if (LV.scrittura.VIETATI.test(nome)) { out.errori.push(`nome non valido per l'Anagrafica: ${nome}`); continue; }
+          await LV.vault.creaFile(`Anagrafica/${nome}.md`, testoStub(nome, org, email));
+          out.created.push(nome);
+        } catch (e) { out.errori.push(`${nome}: ${e.message}`); }
+      }
+    }
+    return out;
+  }
+  LV.anagrafica = { testoStub, trova, completaEmail, aggiornaDaPresenze };
+})(window.LV);
+
+/* === 38_trascritti.js === */
+/* Trascritti di riunione → markdown: .vtt (traduzione di scripts/vtt2md.py) e .docx (lettore Word in JS:
+   stesso testo del docx2md di pandoc — speaker in grassetto, timestamp, hard break — non byte-identico). */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+  function vttToMd(testo, stem) {
+    const cues = [];
+    for (const m of testo.matchAll(/(\d{2}):(\d{2}):(\d{2})\.\d+\s*-->.*?\n<v ([^>]+)>(.*?)<\/v>/gs)) {
+      const [, h, mi, s, speaker, battuta] = m;
+      const start = `${+h * 60 + +mi}:${s}`, chi = speaker.trim(), txt = battuta.split(/\s+/).filter(Boolean).join(' ');
+      if (cues.length && cues.at(-1).chi === chi) cues.at(-1).txt += ' ' + txt;
+      else cues.push({ chi, start, txt });
+    }
+    const righe = [`**${stem}** (da sottotitoli VTT)`, '', `Durata circa ${cues.length ? cues.at(-1).start : '?'}`, ''];
+    for (const c of cues) righe.push(`**${c.chi}** ${c.start}\\`, c.txt, '');
+    return righe.join('\n');
+  }
+
+  const figli = (el, nome) => Array.from(el.childNodes).filter((n) => n.nodeType === 1 && n.localName === nome && n.namespaceURI === W);
+  function grassetto(run) {
+    const rPr = figli(run, 'rPr')[0];
+    const b = rPr && figli(rPr, 'b')[0];
+    if (!b) return false;
+    const val = b.getAttributeNS(W, 'val') || b.getAttribute('w:val');
+    return !(val === '0' || val === 'false');
+  }
+  function testoParagrafo(p) {   // segmenti [testo, bold] → i gruppi contigui in grassetto diventano **…**
+    const seg = [];
+    for (const r of Array.from(p.getElementsByTagNameNS(W, 'r'))) {
+      const bold = grassetto(r);
+      for (const n of Array.from(r.childNodes)) {
+        if (n.nodeType !== 1 || n.namespaceURI !== W) continue;
+        if (n.localName === 't') seg.push([n.textContent, bold]);
+        else if (n.localName === 'tab') seg.push([' ', false]);
+        else if (n.localName === 'br') seg.push(['\\\n', false]);
+      }
+    }
+    let out = '', i = 0;
+    while (i < seg.length) {
+      if (!seg[i][1]) { out += seg[i][0]; i++; continue; }
+      let j = i, t = '';
+      while (j < seg.length && seg[j][1]) t += seg[j++][0];
+      const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(t);   // spazi di bordo fuori dai **: Teams scrive `NOME   ` in grassetto, e `**NOME   **` non è markdown valido
+      out += m[2] ? `${m[1]}**${m[2]}**${m[3]}` : t;
+      i = j;
+    }
+    return out.replace(/^(\\\n)+/, '');   // hard break in testa al paragrafo: riga con solo `\`, rumore
+  }
+  const testoCella = (tc) => figli(tc, 'p').map(testoParagrafo).join(' ').replace(/\\\n/g, ' ').replace(/\s+/g, ' ').trim();
+  function testoTabella(tbl) {
+    return figli(tbl, 'tr').map((tr) => `| ${figli(tr, 'tc').map(testoCella).join(' | ')} |`).join('\n');
+  }
+  async function docxToMd(bytes) {
+    if (!LV.zip.disponibile()) throw new Error('DecompressionStream assente: serve Edge o Chrome 103 o successivi');
+    const voci = await LV.zip.leggi(bytes);
+    const doc = voci.find((v) => v.nome === 'word/document.xml');
+    if (!doc) throw new Error('document.xml assente: non è un file Word');
+    const xml = new DOMParser().parseFromString(new TextDecoder().decode(doc.dati), 'application/xml');
+    if (xml.getElementsByTagName('parsererror').length) throw new Error('document.xml non leggibile');
+    const body = xml.getElementsByTagNameNS(W, 'body')[0];
+    if (!body) throw new Error('document.xml senza w:body');
+    const blocchi = [];
+    for (const el of Array.from(body.childNodes)) {
+      if (el.nodeType !== 1 || el.namespaceURI !== W) continue;
+      if (el.localName === 'p') blocchi.push(testoParagrafo(el));
+      else if (el.localName === 'tbl') blocchi.push(testoTabella(el));
+    }
+    return blocchi.filter((b) => b.trim()).join('\n\n') + '\n';   // paragrafi vuoti: al più una riga vuota fra i blocchi (come pandoc)
+  }
+  const nomeMd = (nomeFile) => nomeFile.replace(/\.(docx|vtt)$/i, '') + '.md';
+  LV.trascritti = { vttToMd, docxToMd, nomeMd };
+})(window.LV);
+
+/* === 39_fonti.js === */
+/* Carica fonti: traduzione di leviathadm/vault/fonti.py + ui/pages/carica_fonti.processa — salvataggio in
+   _fonti/<AAAAMMGG> <Fase>/, conversione dei trascritti, presenze → Anagrafica, riga Riunioni; un messaggio per esito. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const ESTENSIONI = new Set(['.docx', '.md', '.vtt', '.csv', '.pdf']);
+  const MAX_BYTES = 200 * 1024 * 1024;
+  const estensione = (nome) => { const i = nome.lastIndexOf('.'); return i < 0 ? '' : nome.slice(i).toLowerCase(); };
+  const basename = (nome) => (nome || '').split(/[\\/]/).at(-1);
+  const cartella = (dirRilascio, dataIso, faseTab) => `${dirRilascio}/_fonti/${dataIso.replaceAll('-', '')} ${faseTab}`;
+  const decodificaMd = (bytes) => LV.vault.normalizzaTesto(new TextDecoder().decode(bytes)).text;   // BOM tolto, CRLF → LF (come l'indice)
+  const stessiByte = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+  async function salva(dirRilascio, dataIso, faseTab, nome, bytes, { sovrascrivi = false } = {}) {
+    nome = basename(nome);
+    const ext = estensione(nome);
+    if (!ESTENSIONI.has(ext)) return { stato: 'rifiutato', rel: null, messaggio: `estensione non ammessa: ${nome}` };
+    if (bytes.length > MAX_BYTES) return { stato: 'rifiutato', rel: null, messaggio: `file troppo grande (> ${MAX_BYTES / 2 ** 20} MB): ${nome}` };
+    const rel = `${cartella(dirRilascio, dataIso, faseTab)}/${nome}`;
+    let esistente = LV.indice.files[rel];
+    if (!esistente && await LV.vault.adottaDalDisco(rel)) esistente = LV.indice.files[rel];   // comparso sul disco dopo l'apertura: conflitto, non sovrascrittura silenziosa
+    if (esistente) {
+      const uguale = ext === '.md' ? esistente.text === decodificaMd(bytes) : stessiByte(await LV.vault.leggiBinario(rel), bytes);
+      if (uguale) return { stato: 'identico', rel, messaggio: '' };
+      if (!sovrascrivi) return { stato: 'conflitto', rel, messaggio: `${nome} esiste già con contenuto diverso` };
+    }
+    if (ext === '.md') {
+      if (esistente) await LV.vault.scriviFile(rel, decodificaMd(bytes), esistente.lastModified);
+      else await LV.vault.creaFile(rel, decodificaMd(bytes));
+    } else await LV.vault.scriviBinario(rel, bytes);
+    return { stato: 'salvato', rel, messaggio: '' };
+  }
+
+  async function scriviMd(rel, testo) {   // il .md gemello del trascritto: copia di lavoro, sovrascritta
+    const f = LV.indice.files[rel];
+    if (f && f.text !== null) await LV.vault.scriviFile(rel, testo, f.lastModified); else await LV.vault.creaFile(rel, testo);
+  }
+  async function converti(rel, nome, bytes) {   // → nome del .md oppure Error
+    const ext = estensione(nome);
+    if (ext === '.md') return nome;
+    const testo = ext === '.vtt' ? LV.trascritti.vttToMd(new TextDecoder().decode(bytes), nome.slice(0, -4)) : await LV.trascritti.docxToMd(bytes);
+    const relMd = rel.slice(0, rel.length - nome.length) + LV.trascritti.nomeMd(nome);
+    await scriviMd(relMd, testo);
+    return LV.trascritti.nomeMd(nome);
+  }
+  function resocontoBozzaPer(dirRilascio, dataIso, faseTab) {   // il resoconto di quella riunione nella radice del rilascio, se esiste
+    const etichetta = faseTab.replace('SAL #', 'SAL ');
+    const codice = dirRilascio.split('/').at(-1);
+    const r = LV.vault.rilascioPerCartella(dirRilascio);
+    const rel = `${dirRilascio}/${LV.sk.nomeFile(r ? r.codice : codice, etichetta, dataIso)}`;
+    return LV.indice.files[rel] ? rel : null;
+  }
+
+  async function carica({ dirRilascio, schedaRel, dataIso, faseTab, files, sovrascrivi = new Set() }) {
+    return LV.vault.inBlocco(async () => {
+      const out = { messaggi: [], conflitti: [], trascritto: null, presenze: null, resocontoBozza: null };
+      for (const { nome: nomeGrezzo, bytes } of files) {
+        const nome = basename(nomeGrezzo);
+        let e;
+        try { e = await salva(dirRilascio, dataIso, faseTab, nome, bytes, { sovrascrivi: sovrascrivi.has(nome) }); }
+        catch (err) { out.messaggi.push(`${nome}: non salvato (${err.message})`); continue; }
+        if (e.stato === 'rifiutato' || e.stato === 'conflitto') {
+          out.messaggi.push(`${nome}: ${e.stato} — ${e.messaggio}`);
+          if (e.stato === 'conflitto') out.conflitti.push(nome);
+          continue;
+        }
+        out.messaggi.push(`${nome}: ${e.stato}`);
+        const ext = estensione(nome);
+        if (ext === '.docx' || ext === '.vtt' || ext === '.md') {
+          try {
+            const md = await converti(e.rel, nome, bytes);
+            if (ext !== '.md') out.messaggi.push(`${nome}: convertito in ${md}`);
+            out.trascritto = out.trascritto || md;
+          } catch (err) { out.messaggi.push(`${nome}: salvato ma non convertito (${err.message}): convertilo a mano`); }
+        } else if (ext === '.csv') {
+          try {
+            const p = LV.presenze.parse(bytes, nome);
+            if (!p.adm.length && !p.sogei.length && !p.altri.length) throw new Error('nessun partecipante nella sezione "2. Partecipanti"');
+            const a = await LV.anagrafica.aggiornaDaPresenze(p);
+            out.messaggi.push(`${nome}: ${p.adm.length} ADM, ${p.sogei.length} SOGEI, ${p.altri.length} altri; stub Anagrafica creati: ${a.created.length}`);
+            for (const err of a.errori) out.messaggi.push(`${nome}: ${err}`);
+            out.presenze = p;
+          } catch (err) { out.messaggi.push(`${nome}: salvato, ma non leggibile come presenze (${err.message})`); }
+        }
+      }
+      if (out.trascritto) {
+        try {
+          const s = LV.indice.files[schedaRel];
+          if (!s || s.text === null) throw new Error('scheda non in indice');
+          const nuovo = LV.sk.completaRigaRiunione(s.text, dataIso, faseTab, out.trascritto);
+          if (nuovo !== null) {
+            await LV.vault.scriviFile(schedaRel, nuovo, s.lastModified);
+            out.messaggi.push(`Riga Riunioni ${dataIso} ${faseTab}: trascritto \`${out.trascritto}\``);
+            const av = await LV.vault.avanzaStato(schedaRel);
+            if (av) out.messaggi.push(`Stato: ${av.da || '(vuoto)'} → ${av.a}`);
+          }
+        } catch (err) { out.messaggi.push(`Riga Riunioni non aggiornata (${err.message}): aggiungi il trascritto a mano`); }
+      }
+      if (out.presenze) out.resocontoBozza = resocontoBozzaPer(dirRilascio, dataIso, faseTab);
+      return out;
+    });
+  }
+  LV.fonti = { ESTENSIONI, MAX_BYTES, cartella, salva, carica };
 })(window.LV);
 
 /* === 40_render.js === */
@@ -2209,7 +2748,7 @@ data_disponibilita_collaudo:
     return s;
   }
   function inline(t) {
-    // i wikilink si riconoscono sul testo grezzo: apostrofi e & nei nomi (es. [[Uragano Ali' Biagio]]) non devono
+    // i wikilink si riconoscono sul testo grezzo: apostrofi e & nei nomi (es. [[Vortice Ali' Biagio]]) non devono
     // passare dall'escape prima della regex (&#39; contiene il # che chiude il target)
     const s = String(t ?? '');
     let out = '', pos = 0;
@@ -2256,6 +2795,386 @@ data_disponibilita_collaudo:
   }
   LV.render.inline = inline;
   LV.render.markdown = markdown;
+})(window.LV);
+
+/* === 41_convocazione.js === */
+/* Convocazioni (startup e collaudo): traduzione di scripts/genera_convocazione.py, ui/pages/convocazione.py e
+   vault/piano_test.py. Funzioni pure, nessun DOM: date proposte, ora, alternative, Piano di Test (Task 1);
+   destinatari e corpi (Task 2); .ics e .eml (Task 3); Verbale (Task 4). Il vault entra solo in 30_vault.js. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const K = LV.cruscotto;
+  const GIORNI = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica'];
+  const ORA = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const daIso = (iso) => new Date(`${iso}T00:00:00Z`);                 // UTC come 35_cruscotto: niente salti di ora legale
+  const aIso = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  const piuGiorni = (iso, n) => aIso(new Date(daIso(iso).getTime() + n * 86400000));
+  const giorniTra = (a, b) => Math.round((daIso(a) - daIso(b)) / 86400000);
+
+  // ---- date (propose_collaudo_date, giorni_lavorativi_dopo, _fmt_giorno) ----
+  function proponiDataCollaudo(scadenzaIso, oggiIso, minGap = 3) {
+    let cand = null;
+    for (const off of [15, 10]) { const c = piuGiorni(scadenzaIso, -off); if (giorniTra(c, oggiIso) >= minGap) { cand = c; break; } }
+    if (cand === null) cand = piuGiorni(scadenzaIso, -10);
+    while (K.weekday(cand) >= 5) cand = piuGiorni(cand, -1);
+    return cand;
+  }
+  function dataProposta(fm, oggiIso) {   // '' se data_disponibilita_collaudo assente o non leggibile (DA COMPLETARE)
+    const disp = LV.md.parseData((fm || {}).data_disponibilita_collaudo || '');
+    return disp ? proponiDataCollaudo(piuGiorni(disp, 20), oggiIso) : '';
+  }
+  const giorniLavorativiDopo = (iso, n) => K.businessDaysAfter(iso, n);
+  const ddmmyyyy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  const formattaGiorno = (iso) => `${GIORNI[K.weekday(iso)]} ${ddmmyyyy(iso)}`;
+  const formattaAlternativa = (iso, ora) => `${GIORNI[K.weekday(iso)]} ${ddmmyyyy(iso)}, ore ${ora.trim()}`;
+
+  // ---- ora (valida_ora / _check_ora) ----
+  function validaOra(ora) {
+    const m = ORA.exec((ora || '').trim());
+    if (!m) return 'ora non valida (HH:MM)';
+    const minuti = +m[1] * 60 + +m[2];
+    if (12 * 60 + 30 <= minuti && minuti < 14 * 60) return 'niente riunioni tra le 12:30 e le 14:00 (pausa pranzo)';
+    return null;
+  }
+
+  // ---- alternative (alternative_da_righe): righe vuote saltate, data e ora entrambe obbligatorie ----
+  function alternativeDaRighe(righe) {
+    const alternative = [];
+    for (let i = 0; i < righe.length; i++) {
+      const data = (righe[i][0] || '').trim(), ora = (righe[i][1] || '').trim();
+      if (!data && !ora) continue;
+      const iso = /^\d{4}-\d{2}-\d{2}$/.test(data) ? LV.md.parseData(data) : null;   // date.fromisoformat: solo AAAA-MM-GG
+      if (!iso) return { alternative: [], errore: `alternativa ${i + 1}: data non valida` };
+      const motivo = validaOra(ora);
+      if (motivo) return { alternative: [], errore: `alternativa ${i + 1}: ${motivo}` };
+      alternative.push(formattaAlternativa(iso, ora));
+    }
+    return { alternative, errore: null };
+  }
+
+  // ---- Piano di Test (piano_test.trova_piano / parse_piano_test) ----
+  const BULLET = /^- \*\*(.+?)\*\*\s*$/;
+  function parsePianoTest(testo) {
+    const documento = (LV.md.parseFrontmatter(testo).documento_analisi || '').trim();
+    const { blocchi } = LV.res.spezzaSezioni(LV.md.splitBody(testo));
+    const riep = blocchi.find((b) => b.heading.trim().toLowerCase() === 'riepilogo');
+    const verifiche = [];
+    if (riep) for (const riga of riep.body.split('\n')) {
+      const m = riga.startsWith('- ') ? BULLET.exec(riga.trim()) : null;
+      if (m) verifiche.push(m[1].trim());
+    }
+    return { documento, verifiche };
+  }
+  function trovaPianoTest(dirRilascio, idx) {   // primo "*Piano di Test.md" nella root del rilascio, ordine dei rel
+    const n = dirRilascio.split('/').length + 1;
+    const c = Object.keys(idx.files).filter((k) => k.startsWith(`${dirRilascio}/`) && k.split('/').length === n && k.toLowerCase().endsWith('piano di test.md')).sort();   // glob di Windows: maiuscole indifferenti
+    return c.length ? c[0] : null;
+  }
+
+  // ---- destinatari (_recipients + avvisa_email_mancanti + referente SOGEI della startup) ----
+  const stems = (idx) => Object.values(idx.note).filter((n) => n.tipo === 'persona').map((n) => LV.modelli.stemDi(n.rel))
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));   // come persone() di 34_mail.js
+  function destinatari(testoScheda, idx, { startup = false } = {}) {
+    const team = LV.sk.teamFromRelease(testoScheda, stems(idx)), email = (n) => LV.mail.email(n, idx);
+    const pm = new Set((team.PM || []).map(email));
+    const emails = (role) => (team[role] || []).map(email);
+    const pool = emails('RA').length ? emails('RA') : emails('RB');
+    const a = pool.find((e) => !e.includes('[') && !pm.has(e)) || '';
+    const cc = [];
+    for (const role of ['RA', 'RP', 'RB', 'SOGEI']) for (const e of emails(role)) if (!e.includes('[') && !pm.has(e) && e !== a && !cc.includes(e)) cc.push(e);
+    if (startup) {   // alla startup la riga SOGEI è spesso "[da completare]": referente dal frontmatter
+      const sogei = (LV.md.parseFrontmatter(testoScheda).referente_sogei || '').trim();
+      if (sogei) { const em = email(sogei); if (!em.includes('[') && em !== a && !cc.includes(em)) cc.push(em); }
+    }
+    const mancanti = [];
+    for (const [ruolo, nomi] of Object.entries(team)) for (const n of nomi) if (email(n).includes('[')) mancanti.push(`${ruolo} ${n}`);
+    return { a, cc, mancanti };
+  }
+
+  // ---- corpi dai template (_build_body, _build_body_startup) e oggetto ----
+  const template = (tpl) => tpl.replace(/\r\n/g, '\n').replace(/\n+$/, '');   // i .txt del vault sono in CRLF; rstrip("\n")
+  const pulisciVerifiche = (testo) => String(testo || '').split(/\r?\n/).map((r) => r.trim()).filter(Boolean);
+  function corpoCollaudo(tpl, { codice, descrizione, dataIso, ora, documento, verifiche }) {
+    const lit = (s) => () => s;   // forma a funzione: `$&`, `$1`, `$$` nei valori restano testuali
+    let t = template(tpl).replaceAll('ADMXXX-XX-XX', lit(codice));
+    t = t.replace(/"x+"/g, () => `"${descrizione}"`);
+    t = t.replace(/il giorno .+? alle ore [\d:]+/g, () => `il giorno ${formattaGiorno(dataIso)} alle ore ${ora}`);
+    t = t.replaceAll('[XX-XX-XX-XX]', lit(documento));
+    const elenco = verifiche.map((v) => `- ${v.replace(/[;.]+$/, '')};`).join('\n').replace(/;$/, '') + '.';
+    return t.replace(/\[Sommario.*?\]/g, () => elenco);   // re.sub: tutte le occorrenze, `.` senza a capo
+  }
+  function corpoStartup(tpl, { codice, fm, dataIso, ora, alternative }) {
+    const sotto = `${fm.codice_sottoprogetto || ''} ${fm.descrizione_sottoprogetto || ''}`.trim(), ril = fm.descrizione_rilascio || codice;
+    const lit = (s) => () => s;
+    let t = template(tpl).replaceAll('ADMXXX-XX <Descrizione Sottoprogetto>', lit(sotto));
+    t = t.replace('ADMXXX-XX-XX <Descrizione rilascio>.', lit(`${codice} ${ril}, proposta per il giorno ${formattaGiorno(dataIso)} alle ore ${ora}.`));
+    t = t.replaceAll('ADMXXX-XX-XX <Descrizione rilascio>', lit(`${codice} ${ril}`));
+    if (alternative && alternative.length) {
+      const out = []; let i = 0;
+      for (const ln of t.split('\n')) {
+        if (ln.trim().startsWith('•') && ln.includes('xxx')) { if (i < alternative.length) out.push(ln.replace('xxx', lit(alternative[i++]))); }   // bullet in eccesso: rimosso
+        else out.push(ln);
+      }
+      t = out.join('\n');
+    }
+    return t;
+  }
+  const oggetto = (tipo, codice, descrizione) => `[${codice}] Convocazione riunione di ${tipo} — ${descrizione}`;
+
+  // ---- invito .ics (_build_ics, _ics_escape, _ics_fold) ----
+  const enc = new TextEncoder();
+  const icsEscape = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  function icsFold(line) {   // RFC 5545: oltre 73 ottetti si spezza su confine di carattere, continuazione con uno spazio
+    const out = []; let cur = '', len = 0;
+    for (const ch of line) {
+      const b = enc.encode(ch).length;
+      if (len + b > 73) { out.push(cur); cur = ' ' + ch; len = 1 + b; } else { cur += ch; len += b; }
+    }
+    out.push(cur);
+    return out.join('\r\n');
+  }
+  const stampUtc = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  function ics({ codice, descrizione, dataIso, ora, durata, corpo, organizzatore, a, cc, tipo, uid = crypto.randomUUID(), stamp = stampUtc() }) {
+    const [hh, mm] = ora.split(':').map(Number);
+    const inizio = new Date(Date.UTC(+dataIso.slice(0, 4), +dataIso.slice(5, 7) - 1, +dataIso.slice(8, 10), hh, mm));
+    const fine = new Date(inizio.getTime() + durata * 60000);
+    const f = (d) => `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}`;
+    const righe = [
+      'BEGIN:VCALENDAR', 'PRODID:-//PO 2026//Convocazione//IT', 'VERSION:2.0', 'METHOD:REQUEST', 'CALSCALE:GREGORIAN',
+      'BEGIN:VTIMEZONE', 'TZID:Europe/Rome',
+      'BEGIN:DAYLIGHT', 'TZOFFSETFROM:+0100', 'TZOFFSETTO:+0200', 'TZNAME:CEST', 'DTSTART:19700329T020000', 'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU', 'END:DAYLIGHT',
+      'BEGIN:STANDARD', 'TZOFFSETFROM:+0200', 'TZOFFSETTO:+0100', 'TZNAME:CET', 'DTSTART:19701025T030000', 'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU', 'END:STANDARD',
+      'END:VTIMEZONE',
+      'BEGIN:VEVENT', `UID:${uid}@adm.gov.it`, `DTSTAMP:${stamp}`,
+      `DTSTART;TZID=Europe/Rome:${f(inizio)}`, `DTEND;TZID=Europe/Rome:${f(fine)}`,
+      `SUMMARY:${icsEscape(`[${codice}] Riunione di ${tipo} - ${descrizione}`)}`,
+      'LOCATION:Microsoft Teams', `DESCRIPTION:${icsEscape(corpo)}`, `ORGANIZER:mailto:${organizzatore}`,
+    ];
+    for (const em of [a, ...cc]) if (em && !em.includes('[')) righe.push(`ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${em}`);
+    righe.push('STATUS:CONFIRMED', 'SEQUENCE:0', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR');
+    return righe.map(icsFold).join('\r\n') + '\r\n';
+  }
+  const icsNormalizzato = (testo) => testo.split('\r\n').filter((r) => !r.startsWith('UID:') && !r.startsWith('DTSTAMP:')).join('\r\n');
+
+  // ---- bozza .eml (_build_eml_bytes): multipart/mixed > alternative(plain, html, calendar) + pdf + invite.ics, tutto base64 ----
+  function base64Righe(bytes) {
+    let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return (btoa(bin).match(/.{1,76}/g) || []).join('\r\n');
+  }
+  const b64 = (bytes) => { let bin = ''; for (const b of bytes) bin += String.fromCharCode(b); return btoa(bin); };
+  function encodedWord(s) {   // RFC 2047: solo se non ASCII; encoded-word da ≤75 caratteri (≤45 byte UTF-8 ciascuno), continuazioni con spazio
+    if (/^[\x20-\x7e]*$/.test(s)) return s;
+    const parole = []; let cur = '', len = 0;
+    for (const ch of s) { const b = enc.encode(ch).length; if (len + b > 45) { parole.push(cur); cur = ''; len = 0; } cur += ch; len += b; }
+    parole.push(cur);
+    return parole.map((p) => `=?utf-8?b?${b64(enc.encode(p))}?=`).join('\r\n ');
+  }
+  const boundary = () => '===============' + crypto.randomUUID().replace(/-/g, '') + '==';
+  function eml({ oggetto: subj, corpo, organizzatore, a, cc, calendario, allegato = null }) {
+    const bMixed = boundary(), bAlt = boundary();
+    const parte = (ct, extra, body) => [`--${bAlt}`, `Content-Type: ${ct}`, 'MIME-Version: 1.0', 'Content-Transfer-Encoding: base64', ...extra, '', base64Righe(body), ''];
+    const righe = [`Content-Type: multipart/mixed; boundary="${bMixed}"`, 'MIME-Version: 1.0', 'X-Unsent: 1', `Subject: ${encodedWord(subj)}`, `From: ${organizzatore}`, `To: ${a}`];
+    if (cc && cc.length) righe.push(`Cc: ${cc.join(', ')}`);
+    righe.push('', `--${bMixed}`, `Content-Type: multipart/alternative; boundary="${bAlt}"`, 'MIME-Version: 1.0', '');
+    righe.push(...parte('text/plain; charset="utf-8"', [], enc.encode(corpo)));
+    righe.push(...parte('text/html; charset="utf-8"', [], enc.encode(`<html><body>${LV.mail.plainToHtml(corpo)}</body></html>`)));
+    righe.push(...parte('text/calendar; charset="utf-8"; method="REQUEST"; component="VEVENT"', [], enc.encode(calendario)));
+    righe.push(`--${bAlt}--`, '');
+    const allegatoMime = (ct, nome, bytes) => [`--${bMixed}`, `Content-Type: ${ct}`, 'MIME-Version: 1.0', 'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${nome}"`, '', base64Righe(bytes), ''];   // ponytail: filename non ASCII non codificato (RFC 2231): i codici documento sono ASCII
+    if (allegato) righe.push(...allegatoMime('application/pdf', allegato.nome, allegato.bytes));
+    righe.push(...allegatoMime('application/ics', 'invite.ics', enc.encode(calendario)));
+    righe.push(`--${bMixed}--`, '');
+    return enc.encode(righe.join('\r\n'));
+  }
+
+  // ---- Verbale di Collaudo (genera_pagina_collaudo) e nomi dei file ----
+  const nomeVerbale = (codice, dataIso) => `${codice} - ${dataIso.replaceAll('-', '')} Verbale di Collaudo.md`;
+  const nomeEml = (codice, dataIso, tipo) => `${codice} - ${dataIso.replaceAll('-', '')} Convocazione ${tipo === 'startup' ? 'Startup' : 'Collaudo'}.eml`;
+  function verbale({ codice, descrizione, documento, verifiche, dataIso, oggiIso }) {
+    const nomi = verifiche.map((v) => v.replace(/[;. ]+$/, ''));
+    const L = ['---', `codice_rilascio: ${codice}`, 'tipo: verbale_collaudo', `documento_analisi: ${documento}`, `data_collaudo: ${dataIso}`, `aggiornato: ${oggiIso}`, 'esito_collaudo:', '---', '',
+      `# ${codice} — Verbale di Collaudo`, '', `[[${codice}]]`, '', `> Rilascio: **${descrizione}**`,
+      `> Documento di analisi: **${documento}** · Data collaudo: **${ddmmyyyy(dataIso)}**`,
+      "> Spunta l'esito di ciascuna verifica: le caselle in elenco sono cliccabili in Obsidian.", '', '---', '', '## Riepilogo verifiche', ''];
+    nomi.forEach((v, i) => L.push(`- **${i + 1}. ${v}**`, '    - [ ] Superato', '    - [ ] Non superato'));
+    L.push('', '---', '', '## Dettaglio verifiche', '');
+    nomi.forEach((v, i) => L.push(`### ${i + 1}. ${v}`, '', '**Esito:**', '- [ ] Superato', '- [ ] Non superato', '', '**Data:**   ·  **Testato da:**', '**Note / anomalie:**', ''));
+    L.push('---', '', '## Esito complessivo', '', '- [ ] Superato', '- [ ] Superato con riserva', '- [ ] Non superato', '', '**Data verbale:**', '**Presenti:**', '**Riserve / azioni correttive:**', '');
+    return L.join('\n');
+  }
+
+  function organizzatoreDefault(idx, anno) {   // pm della dashboard `PO <anno>.md` → email; '' se manca o segnaposto (il Python lo ha cablato)
+    const dash = idx.files[`PO ${anno}.md`];
+    const pm = dash && dash.text !== null ? (LV.md.parseFrontmatter(dash.text).pm || '').trim() : '';
+    const em = pm ? LV.mail.email(pm, idx) : '';
+    return em && !em.includes('[') ? em : '';
+  }
+
+  LV.conv = { GIORNI, proponiDataCollaudo, dataProposta, giorniLavorativiDopo, formattaGiorno, formattaAlternativa, validaOra, alternativeDaRighe,
+              parsePianoTest, trovaPianoTest, destinatari, corpoCollaudo, corpoStartup, oggetto, pulisciVerifiche, ics, icsNormalizzato, eml,
+              verbale, nomeVerbale, nomeEml, organizzatoreDefault };
+})(window.LV);
+
+/* === 42_lettere.js === */
+/* Lettere di fine collaudo (Trasmissione copia verbale di collaudo · Richiesta estensione in esercizio): dati dal
+   rilascio (Task 1) e riempimento dei template Word (Task 2). Nessuna controparte Python: replica dello script
+   python-docx del 2026-10-20 e delle regole di CLAUDE.md "Lettere di fine collaudo". Il vault entra solo in 30_vault.js. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const LETTERE = [['trasmissione', 'Trasmissione copia verbale di collaudo'], ['estensione', 'Richiesta estensione in esercizio']];
+  const etichetta = (tipo) => (LETTERE.find(([t]) => t === tipo) || [])[1] || '';
+  const nomeFile = (codice, tipo) => (tipo === 'trasmissione' ? `${codice} ${etichetta(tipo)}.docx` : `${codice} - ${etichetta(tipo)}.docx`);   // convenzione dei file nel vault
+  const PARTICELLE = new Set('a e di del della delle dei degli ed per in al alla ai agli su sul'.split(' '));
+  const stems = (idx) => Object.values(idx.note).filter((n) => n.tipo === 'persona').map((n) => LV.modelli.stemDi(n.rel));
+
+  const PARTICELLE_COGNOME = new Set('de di del della dello dei degli da dal dalla dalle lo la le li van von mc mac san santa'.split(' '));   // cognomi composti: "De Luca", "Lo Presti"
+  function cognomeNome(nome, idx = null) {   // "Cognome Nome" dell'Anagrafica; "Cognome | Nome" forza la divisione; se il nome è invertito e l'Anagrafica ha la forma invertita, si raddrizza
+    let n = String(nome || '').replace(/\s*\([^)]*\)/g, '').trim().replace(/\s+/g, ' ');
+    if (n.includes('|')) { const [c, ...r] = n.split('|'); return [c.trim(), r.join('|').trim()]; }
+    if (idx && n) {
+      const tutti = stems(idx), giu = n.toLowerCase();
+      if (!tutti.some((s) => s.toLowerCase() === giu)) {
+        const inv = n.split(' ').reverse().join(' ');
+        if (tutti.some((s) => s.toLowerCase() === inv.toLowerCase())) n = inv;
+      }
+    }
+    const parti = n.split(' ');
+    const k = parti.length >= 3 && PARTICELLE_COGNOME.has(parti[0].toLowerCase()) ? 2 : 1;   // particella + cognome, solo se resta almeno un nome
+    return [parti.slice(0, k).join(' '), parti.slice(k).join(' ')];
+  }
+  function ufficioDaOrganigramma(denominazione) {   // "GIOCO A DISTANZA E SCOMMESSE" → "Ufficio Gioco a Distanza e Scommesse" (convenzione, non un dato: la finestra lo segnala)
+    const parole = String(denominazione || '').trim().split(/\s+/).filter(Boolean);
+    if (!parole.length) return '';
+    return 'Ufficio ' + parole.map((p, i) => { const low = p.toLowerCase(); return i > 0 && PARTICELLE.has(low) ? low : low[0].toUpperCase() + low.slice(1); }).join(' ');
+  }
+  function direzioneDaSigla(sigla, idx) {   // nome_ufficiale di Anagrafica/Strutture/<sigla>.md, altrimenti la sigla
+    const s = String(sigla || '').trim();
+    if (!s) return '';
+    const f = idx.files[`Anagrafica/Strutture/${s}.md`];
+    const nome = f && f.text !== null ? (LV.md.parseFrontmatter(f.text).nome_ufficiale || '').trim() : '';
+    return nome || s;
+  }
+  const esitoDaResoconto = (testoMd) => { const m = /esito \*\*(POSITIVO|con riserva|NEGATIVO)\*\*/.exec(String(testoMd || '')); return m ? m[1] : ''; };
+  const AVVISO_DENOMINAZIONE = 'verifica la denominazione nell\'intestazione';
+  const AVVISO_RB = 'RB senza direzione/ufficio in Anagrafica: compila a mano (e la scheda della persona)';
+  const AVVISO_EFFETTIVA = 'non compariranno in Da firmare finché il collaudo non è registrato come svolto';
+
+  function datiLettere(r, idx) {   // sincrono: scheda, ultimo resoconto di collaudo, Verbale, Anagrafica; il CSV presenze lo aggiunge datiLettereConCsv
+    const fm = LV.md.parseFrontmatter(idx.files[r.rel].text), codice = r.codice;
+    const avvisi = [];
+    const collaudi = (r.resoconti || []).filter((x) => String(x.tipo_riunione || '').toLowerCase().includes('collaudo')).sort((a, b) => String(a.data_riunione || '').localeCompare(String(b.data_riunione || '')));
+    const ultimo = collaudi.at(-1), testoRes = ultimo ? idx.files[ultimo.rel].text : '';
+    const team = LV.sk.teamFromRelease(idx.files[r.rel].text, stems(idx));
+    let adm = [], sogei = [], fonte_nomi = '';
+    if (testoRes) { const p = LV.mail.partecipantiDaResoconto(testoRes); if (p.adm.length || p.sogei.length) { adm = p.adm; sogei = p.sogei; fonte_nomi = 'resoconto'; } }
+    if (!fonte_nomi) {
+      adm = ['PM', 'RA', 'RP', 'RB'].flatMap((k) => team[k] || []);
+      sogei = [...(team.SOGEI || [])];
+      const ref = (fm.referente_sogei || '').trim();
+      if (ref && !sogei.includes(ref)) sogei.unshift(ref);
+      fonte_nomi = adm.length || sogei.length ? 'team' : '';
+    }
+    const pulisci = (n) => cognomeNome(n, idx).filter(Boolean).join(' ');   // suffissi via, "Nome Cognome" raddrizzato: ciò che si vede nella finestra è ciò che finisce nel Word
+    adm = adm.map(pulisci).filter((n) => n && !n.startsWith('[')); sogei = sogei.map(pulisci).filter((n) => n && !n.startsWith('['));
+    let esito = '';
+    const verb = (r.verbali || []).at(-1);
+    if (verb && idx.files[verb]) esito = LV.verb.esitoDaVerbale(LV.verb.parseVerbale(verb, idx.files[verb].text, 0)) || '';
+    if (!esito) esito = esitoDaResoconto(testoRes) || 'POSITIVO';
+    const rb = (team.RB || [])[0] || '';
+    let direzione = '', ufficio = '';
+    if (rb) {
+      const nota = Object.values(idx.note).find((n) => n.tipo === 'persona' && LV.modelli.stemDi(n.rel).toLowerCase() === rb.toLowerCase());
+      const pf = nota ? nota.frontmatter || {} : {};
+      direzione = direzioneDaSigla(pf.direzione || '', idx);
+      ufficio = ufficioDaOrganigramma(pf.ufficio || '');
+    }
+    if (!direzione || !ufficio) avvisi.push(AVVISO_RB);
+    avvisi.push(AVVISO_DENOMINAZIONE);
+    const eff = LV.md.parseData(fm.data_collaudo_effettiva || '');
+    if (!eff || eff > LV.cruscotto.oggi()) avvisi.push(AVVISO_EFFETTIVA);
+    return { progetto: (fm.codice_progetto || '').trim(), descrizione_progetto: (fm.descrizione_progetto || '').trim(), sottoprogetto: (fm.codice_sottoprogetto || '').trim(),
+             rilascio: `${codice} – ${(fm.descrizione_rilascio || '').trim()}`, adm, sogei, fonte_nomi, esito, direzione, ufficio, area_staff: 'Area di Staff', rb, avvisi,
+             csvRel: !testoRes || fonte_nomi !== 'resoconto' ? (eff ? LV.presenze.trovaCsv(r.rel.split('/').slice(0, -1).join('/'), eff) : null) : null };
+  }
+  async function datiLettereConCsv(r, idx) {   // senza nomi dal resoconto: CSV presenze della data del collaudo prima del team
+    const d = datiLettere(r, idx);
+    if (d.fonte_nomi !== 'resoconto' && d.csvRel) {
+      try {
+        const p = LV.presenze.parse(await LV.vault.leggiBinario(d.csvRel), d.csvRel.split('/').at(-1));
+        if (p.adm.length || p.sogei.length) { d.adm = p.adm.map((x) => x.nome); d.sogei = p.sogei.map((x) => x.nome); d.fonte_nomi = 'csv'; }
+      } catch (e) { d.avvisi.push(`CSV presenze non leggibile: ${e.message}`); }
+    }
+    return d;
+  }
+
+  // ---- riempimento dei template Word (script python-docx del 2026-10-20: set_cell, tabella_persone, sostituisci_run) ----
+  const SEGNAPOSTO = ['[Nome]', '[Cognome]', '[Descrizione', '[Direzione', '[Ufficio', '[Area'];
+  const D = () => LV.docx;
+  const testoCella = (tc) => D().figli(tc, 'p').map(D().paraText).join('\n');
+  function residui(body) {   // testi di paragrafi e celle con un segnaposto noto ancora dentro; la riga Prot.: (segnatura) non conta
+    const out = [], d = D();
+    const testi = [...d.figli(body, 'p').map(d.paraText), ...d.figli(body, 'tbl').flatMap((t) => d.righe(t).flatMap((tr) => d.figli(tr, 'tc').map(testoCella)))];
+    for (const t of testi) if (!t.startsWith('Prot.:') && SEGNAPOSTO.some((s) => t.includes(s))) out.push(t);
+    return out;
+  }
+  function tabellaPo(body, dati) {
+    const d = D(), t = d.tabella(body, 0, 2), cs = d.celle(d.righe(t)[1]);
+    [dati.progetto, dati.descrizione_progetto, dati.sottoprogetto, dati.rilascio].forEach((v, i) => { if (cs[i]) d.setCellText(cs[i], String(v ?? '')); });
+  }
+  function tabellaPersone(tbl, nomi) {   // una riga per nome: righe clonate dall'ultima segnaposto, eccedenti rimosse; nomi già "Cognome Nome" (datiLettere)
+    const d = D();
+    let righe = d.righe(tbl).slice(1);
+    if (!righe.length) throw d.nonConforme('tabella dei rappresentanti senza righe segnaposto');
+    while (righe.length < nomi.length) { tbl.appendChild(righe[righe.length - 1].cloneNode(true)); righe = d.righe(tbl).slice(1); }
+    nomi.forEach((n, i) => { const [cog, nom] = cognomeNome(n); const cs = d.celle(righe[i]); d.setCellText(cs[0], cog); if (cs[1]) d.setCellText(cs[1], nom); });
+    for (const tr of righe.slice(nomi.length)) tr.parentNode.removeChild(tr);
+  }
+  function sostituisciRun(body, mappa) {   // solo il testo dei run che contengono il segnaposto: tab, spazi e stile restano
+    const d = D();
+    for (const p of d.figli(body, 'p')) for (const r of d.runs(p)) {
+      const t = d.runText(r);
+      let nuovo = t;
+      for (const [vecchio, valore] of Object.entries(mappa)) if (nuovo.includes(vecchio)) nuovo = nuovo.split(vecchio).join(valore);
+      if (nuovo !== t) setRunTextConTab(r, nuovo);
+    }
+  }
+  function setRunTextConTab(r, text) {   // come setRunText, ma i \t iniziali tornano w:tab (i paragrafi p.c. del template cominciano con tab)
+    const d = D(), doc = r.ownerDocument, W = r.namespaceURI;
+    const m = /^(\t*)([\s\S]*)$/.exec(text);
+    d.setRunText(r, m[2]);
+    const primo = Array.from(r.childNodes).find((n) => n.nodeType === 1 && n.localName === 't') || null;
+    for (let i = 0; i < m[1].length; i++) r.insertBefore(doc.createElementNS(W, 'w:tab'), primo);
+  }
+  function controlla(body) {
+    const res = residui(body);
+    if (res.length) throw D().nonConforme(`segnaposto non sostituito: ${res.join(' | ').slice(0, 200)}`);
+  }
+  async function riempiTrasmissione(templateBytes, dati) {
+    const d = D(), doc = await d.apriDocumento(templateBytes), body = doc.body;
+    tabellaPo(body, dati);
+    tabellaPersone(d.tabella(body, 1, 2), dati.adm || []);
+    tabellaPersone(d.tabella(body, 2, 2), dati.sogei || []);
+    const pEsito = d.figli(body, 'p').find((p) => /esito\s+POSITIVO/.test(d.paraText(p)));
+    if (!pEsito) throw d.nonConforme('paragrafo "Il collaudo ha avuto esito POSITIVO" assente');
+    const rEsito = d.runs(pEsito).find((r) => d.runText(r).includes('POSITIVO'));
+    d.setRunText(rEsito, d.runText(rEsito).replace('POSITIVO', dati.esito || 'POSITIVO'));
+    controlla(body);
+    return d.chiudiDocumento(doc);
+  }
+  async function riempiEstensione(templateBytes, dati) {
+    const d = D(), doc = await d.apriDocumento(templateBytes), body = doc.body;
+    tabellaPo(body, dati);
+    sostituisciRun(body, { '[Direzione di business]': dati.direzione || '', '[Ufficio del Responsabile di Business]': dati.ufficio || '', '[Area di Staff]': dati.area_staff || 'Area di Staff' });
+    controlla(body);
+    return d.chiudiDocumento(doc);
+  }
+
+  LV.lettere = { LETTERE, etichetta, nomeFile, cognomeNome, ufficioDaOrganigramma, direzioneDaSigla, esitoDaResoconto, datiLettere, datiLettereConCsv,
+                 residui, riempiTrasmissione, riempiEstensione, AVVISO_DENOMINAZIONE, AVVISO_RB, AVVISO_EFFETTIVA };
 })(window.LV);
 
 /* === 50_ui_shell.js === */
@@ -2312,10 +3231,18 @@ data_disponibilita_collaudo:
     main.innerHTML = `<div class="card" style="max-width:640px;margin:40px auto"><h2>Apri il vault <span class="muted" style="font-size:.7em">LeviathADM Web v${esc(LV.VERSIONE)}</span></h2>
       ${errore ? `<p class="errore">${esc(errore)}</p>` : ''}
       ${ok ? '' : `<p class="errore">${avvisoBrowser}</p>`}
-      <p class="muted">Scegli la cartella del vault (quella che contiene <code>PO 2026/</code>, <code>Anagrafica/</code>). Il browser chiede il permesso a ogni apertura: nulla resta memorizzato.</p>
-      <p><button id="apri" class="primario" ${ok ? '' : 'disabled'}>Apri cartella…</button></p>
+      <p class="muted">Scegli la cartella del vault (quella che contiene <code>PO 2026/</code>, <code>Anagrafica/</code>). Questa copia dell'app ricorda l'ultima cartella aperta: alla prossima apertura basta «Riapri» (il browser richiede solo il permesso).</p>
+      <p><button id="apri" class="primario" ${ok ? '' : 'disabled'}>Apri cartella…</button> <button id="riapri" hidden></button> <a id="dimentica" href="#" class="muted" hidden>dimentica</a></p>
       <p class="muted"><a href="#/manuale">Manuale</a> — come funzionano le due versioni di LeviathADM.</p></div>`;
     main.querySelector('#apri').onclick = () => LV.vault.apriCartella().catch((e) => { if (e.name !== 'AbortError') schermataIniziale(e.message); });   // picker annullato: nessun errore
+    LV.vault.nomeCartellaSalvata().then((n) => {
+      if (!n || !ok) return;
+      const b = main.querySelector('#riapri'), d = main.querySelector('#dimentica');
+      b.hidden = false; d.hidden = false;
+      b.textContent = `Riapri "${n}"`;
+      b.onclick = () => LV.vault.riapri().catch((e) => { if (e.name !== 'AbortError') schermataIniziale(e.message); });
+      d.onclick = (e) => { e.preventDefault(); LV.vault.dimenticaCartella().catch(() => {}).then(() => schermataIniziale()); };
+    }).catch(() => {});
   }
   function naviga() {
     document.querySelectorAll('dialog[open]').forEach((d) => d.close());   // un dialogo non deve sopravvivere al cambio di pagina
@@ -2608,7 +3535,7 @@ data_disponibilita_collaudo:
         const it = items[+form.dataset.i];
         const iso = LV.md.parseData(form.querySelector('[name=data_collaudo_effettiva]').value || '');
         if (!iso) return ui.toast('Data non valida: usa AAAA-MM-GG o GG/MM/AAAA.', 'avviso');
-        ui.esegui(() => LV.vault.registraCollaudo(it.scheda, iso, oggi()), `Collaudo del ${iso} registrato.`, btn);
+        ui.esegui(async () => { const av = await LV.vault.registraCollaudo(it.scheda, iso, oggi()); if (av) ui.toast(`Stato ${it.codice}: ${av.da || '(vuoto)'} → ${av.a}`, 'ok'); }, `Collaudo del ${iso} registrato.`, btn);
       };
     });
   };
@@ -2622,7 +3549,7 @@ data_disponibilita_collaudo:
       <div class="card in-firma"><b>In firma — attesa firma e protocollazione</b><p class="muted">Dopo "Protocollata": inserisci numero e data di protocollo e la riga in ## Allegati protocolli nella scheda (link "Modifica scheda").</p>${in_firma.length ? in_firma.map((it, i) => riga(it, i, 'protocollata')).join('') : vuoto('Nessuna lettera in attesa.')}</div></section>`;
     main.querySelectorAll('.segna-lettera').forEach((btn) => { btn.onclick = () => {
       const stato = btn.dataset.stato, it = (stato === 'in_firma' ? da_mandare : in_firma)[+btn.dataset.i];
-      ui.esegui(() => LV.vault.segnaLettera(it.scheda, it.field_base, stato), stato === 'in_firma' ? 'Lettera segnata in firma.' : 'Lettera protocollata: compila protocollo e tabella Allegati protocolli nella scheda.', btn); }; });
+      ui.esegui(async () => { const av = await LV.vault.segnaLettera(it.scheda, it.field_base, stato); if (av) ui.toast(`Stato ${it.codice}: ${av.da || '(vuoto)'} → ${av.a}`, 'ok'); }, stato === 'in_firma' ? 'Lettera segnata in firma.' : 'Lettera protocollata: compila protocollo e tabella Allegati protocolli nella scheda.', btn); }; });
   };
   ui.rotte['stato-invii'] = function (main) {   // stato_invii.py: matrice rilascio × fase, celle P/D con link ai resoconti
     ui.titolo('Stato invii');
@@ -2666,8 +3593,10 @@ data_disponibilita_collaudo:
     const collegati = new Set(r.riunioni.map((m) => m.resoconto_link));
     const altri = r.resoconti.filter((x) => !collegati.has(x.stem));
     const aperte = r.azioni.filter((a) => !a.chiusa).length;
+    const av = LV.stato.avanzamento(r, LV.cruscotto.oggi());
+    const avHtml = !av ? '' : `<span class="badge suggerito" style="color:#4338ca" title="Stato suggerito dai fatti registrati nella scheda${av.manuale ? ' — avanzamento automatico bloccato da stato_manuale' : ''}">→ ${esc(av.a)}</span>${av.manuale ? '' : '<button class="bottone avanza-stato">Avanza stato</button>'}`;
     main.innerHTML = `
-      <div class="riga"><h2>${esc(r.descrizione_rilascio)}</h2> ${ui.badgeStato(r.stato)} ${vincoli(fm.vincoli_normativi) ? '<span class="badge" style="color:#b45309">Vincoli normativi</span>' : ''}<span style="flex:1"></span><a class="bottone nuovo-resoconto" href="#/rilascio/${esc(codice)}/nuovo">Nuovo resoconto</a> <a class="bottone" href="#/rilascio/${esc(codice)}/modifica">Modifica scheda</a></div>
+      <div class="riga"><h2>${esc(r.descrizione_rilascio)}</h2> ${ui.badgeStato(r.stato)} ${avHtml} ${vincoli(fm.vincoli_normativi) ? '<span class="badge" style="color:#b45309">Vincoli normativi</span>' : ''}<span style="flex:1"></span><a class="bottone nuovo-resoconto" href="#/rilascio/${esc(codice)}/nuovo">Nuovo resoconto</a> <a class="bottone" href="#/rilascio/${esc(codice)}/modifica">Modifica scheda</a> <button type="button" class="bottone carica-fonti" title="Trascritti, CSV presenze e PDF in _fonti/">Carica fonti</button> <button type="button" class="bottone convoca-startup" title="Bozza .eml con invito calendario">Convoca startup</button> <button type="button" class="bottone convoca-collaudo" title="Bozza .eml con invito, PDF del piano di test e Verbale di Collaudo">Convoca collaudo</button> <button type="button" class="bottone lettere-collaudo" title="Trasmissione copia verbale e Richiesta estensione in esercizio (.docx dai template)">Lettere di fine collaudo</button></div>
       <div class="muted">${esc(fm.codice_progetto || '')} · ${esc(fm.descrizione_progetto || '')} → ${esc(fm.codice_sottoprogetto || '')} · ${esc(fm.descrizione_sottoprogetto || '')}</div>
       ${r.problemi.length ? `<p class="errore">${esc(r.problemi.join('; '))}</p>` : ''}
       <div class="card"><div class="griglia">${RUOLI.map(([k, l]) => campo(l, fm[k])).join('')}</div><hr>
@@ -2684,6 +3613,12 @@ data_disponibilita_collaudo:
         <table class="lv"><thead><tr><th>Tipo</th><th>Valore</th></tr></thead><tbody>${PROT.map(([k, l]) => `<tr><td>${esc(l)}</td><td>${esc(fm[k] || '—')}</td></tr>`).join('')}</tbody></table>
         ${r.protocolli.length ? `<details><summary>Allegati protocolli</summary><table class="lv"><thead><tr><th>Tipo</th><th>Documento</th><th>Prot. ADM n.</th><th>Data</th><th>Rif. SOGEI</th><th>Registro</th></tr></thead><tbody>${r.protocolli.map((p) => `<tr>${[p.tipo, p.documento, p.numero_adm, p.data_adm, p.rif_sogei, p.registro].map((c) => `<td>${R.inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>` : ''}</div>
       ${altri.length ? `<details class="card"><summary>Altri resoconti · ${altri.length} (non collegati alla tabella Riunioni)</summary><ul>${altri.map((x) => `<li>${badgeRes(x)} <a href="#/resoconto/${encodeURIComponent(MO.notaId(x.rel))}">${esc(x.stem)}</a></li>`).join('')}</ul></details>` : ''}`;
+    const btnAv = main.querySelector('.avanza-stato');
+    if (btnAv) btnAv.onclick = () => ui.esegui(async () => { const x = await LV.vault.avanzaStato(r.rel, LV.cruscotto.oggi()); if (!x) throw new Error('stato già allineato'); }, `Stato ${codice}: ${av.da || '(vuoto)'} → ${av.a}.`, btnAv);
+    main.querySelector('.carica-fonti').onclick = () => ui.dialogoCaricaFonti(r);
+    main.querySelector('.convoca-startup').onclick = () => ui.dialogoConvocazione(r, 'startup');
+    main.querySelector('.convoca-collaudo').onclick = () => ui.dialogoConvocazione(r, 'collaudo');
+    main.querySelector('.lettere-collaudo').onclick = () => ui.dialogoLettere(r);
     const pannello = main.querySelector('#pannello-fase');
     const mostra = (i) => {
       main.querySelectorAll('.step').forEach((b) => b.classList.toggle('attivo', b.dataset.i === String(i)));
@@ -2697,10 +3632,12 @@ data_disponibilita_collaudo:
       const doc = LV.res.parseResocontoDoc(res.rel, LV.indice.files[res.rel].text, 0);
       const bloccato = res.in_inviati || !doc.ha_sezioni;
       const presenti = [['.docx', res.ha_docx], ['.msg', res.ha_msg], ['.pdf', res.ha_pdf]].filter(([, ok]) => ok).map(([e]) => e).join(' · ');
-      const stato = res.in_inviati ? 'Inviato: sola lettura. Per correggerlo usa "Riporta in bozza" nella pagina del resoconto.' : (bloccato ? 'Brezza sezioni standard: modificabile solo come nota grezza.' : 'Bozza: campi modificabili.');
+      const stato = res.in_inviati ? 'Inviato: sola lettura. Per correggerlo usa "Riporta in bozza" nella pagina del resoconto.' : (bloccato ? 'Ciclone sezioni standard: modificabile solo come nota grezza.' : 'Bozza: campi modificabili.');
       h += `<p>${badgeRes(res)} <a href="#/resoconto/${encodeURIComponent(nid)}">${esc(res.stem)}</a> <span class="muted mono">${esc(presenti)}</span> ${bloccato ? '🔒' : '🔓'} <span class="muted">${stato}</span></p>`;
-      if (m.fase.startsWith('Collaudo')) h += r.verbali.length ? `<p>${`<a href="#/verbale/${encodeURIComponent(MO.notaId(r.verbali.at(-1)))}">Verbale di Collaudo</a>`}</p>` : '<p class="muted">Verbale assente (nasce dalla convocazione di collaudo)</p>';
+      if (m.fase.startsWith('Collaudo')) h += r.verbali.length ? `<p>${`<a href="#/verbale/${encodeURIComponent(MO.notaId(r.verbali.at(-1)))}">Verbale di Collaudo</a>`}</p>` : '<p class="muted">Verbale assente (nasce dalla convocazione di collaudo): <a href="#" class="convoca-collaudo-link">Convoca collaudo</a></p>';
       pannello.innerHTML = h + ui.derivatiHtml(res);
+      const link = pannello.querySelector('.convoca-collaudo-link');
+      if (link) link.onclick = (e) => { e.preventDefault(); ui.dialogoConvocazione(r, 'collaudo'); };
       ui.collegaDerivati(pannello, res, r);
       if (bloccato) pannello.insertAdjacentHTML('beforeend', doc.ha_sezioni ? doc.sezioni.map((s) => `<div class="card"><b>${esc(s.heading)}</b><div class="md">${R.markdown(s.inner) || '<i class="muted">(vuota)</i>'}</div></div>`).join('') : `<div class="card md">${R.markdown(doc.pre + doc.footer)}</div>`);
       else { const box = document.createElement('div'); pannello.appendChild(box); ui.editorResoconto(box, nid, { dopoSalva: () => mostra(i), annulla: () => mostra(i) }); }
@@ -2712,13 +3649,16 @@ data_disponibilita_collaudo:
   };
 
   ui.rotte.resoconto = function (main, nid, azione) {
+    const [az, query] = (azione || '').split('?');   // #/resoconto/<id>/modifica?presenze=1
+    azione = az;
+    const importaPresenze = new URLSearchParams(query || '').get('presenze') === '1';
     const n = LV.indice.note[nid];
     ui.titolo('Resoconto');
     if (!n) { main.innerHTML = `<p>Nessuna nota con id "${esc(nid)}". <a href="#/">Torna ai rilasci</a></p>`; return; }
     if (!/ - 20.* Resoconto /.test(MO.stemDi(n.rel))) { main.innerHTML = `<p class="errore">"${esc(n.titolo)}" non è un resoconto.</p><p><a href="#/nota/${encodeURIComponent(nid)}">Apri come nota</a></p>`; return; }
     if (azione === 'modifica') {
       main.innerHTML = '';
-      return ui.editorResoconto(main, nid, { dopoSalva: () => ui.naviga(`#/resoconto/${encodeURIComponent(nid)}`), annulla: () => ui.naviga(`#/resoconto/${encodeURIComponent(nid)}`) });
+      return ui.editorResoconto(main, nid, { dopoSalva: () => ui.naviga(`#/resoconto/${encodeURIComponent(nid)}`), annulla: () => ui.naviga(`#/resoconto/${encodeURIComponent(nid)}`), importaPresenze });
     }
     const f = LV.indice.files[n.rel];
     const doc = LV.res.parseResocontoDoc(n.rel, f.text, f.lastModified);
@@ -2766,7 +3706,7 @@ data_disponibilita_collaudo:
   const campo = (nome, label, v, attrs = '') => `<label class="campo"><span class="muted">${esc(label)}</span><input type="text" name="${esc(nome)}" value="${esc(v)}" ${attrs}></label>`;
   const campoDataIt = (nome, label, v) => ui.campoDataIt(nome, label, v, { weekend: nome === 'RIUNIONE::DATA' });
 
-  ui.editorResoconto = function (container, nid, { dopoSalva, annulla }) {
+  ui.editorResoconto = function (container, nid, { dopoSalva, annulla, importaPresenze = false }) {
     const n = LV.indice.note[nid];
     if (!n) { container.innerHTML = `<p>Nessuna nota con id "${esc(nid)}".</p>`; return; }
     const f = LV.indice.files[n.rel];
@@ -2793,7 +3733,7 @@ data_disponibilita_collaudo:
         }
         h.push('</div>');
       } else if (s.heading === 'LISTA PARTECIPANTI') {
-        h.push('<div class="partecipanti"></div><p class="riga"><input name="nuovo-adm" list="lv-persone" placeholder="Persona (Anagrafica)" autocomplete="off"><select name="nuova-sigla"><option value=""></option><option>PM</option><option>RA</option><option>RP</option><option>RB</option></select><button type="button" class="aggiungi-adm">Aggiungi da Anagrafica</button></p>'
+        h.push('<div class="partecipanti"></div><p class="riga"><input name="nuovo-adm" list="lv-persone" placeholder="Persona (Anagrafica)" autocomplete="off"><select name="nuova-sigla"><option value=""></option><option>PM</option><option>RA</option><option>RP</option><option>RB</option></select><button type="button" class="aggiungi-adm">Aggiungi da Anagrafica</button><button type="button" class="importa-csv" title="Sostituisce ADM e SOGEI con i presenti del CSV Teams della data della riunione">Importa CSV presenze</button></p>'
           + '<p class="muted">SOGEI</p><div class="sogei"></div><p class="riga"><input name="nuovo-sogei" placeholder="nome SOGEI"><button type="button" class="aggiungi-sogei">Aggiungi SOGEI</button></p>'
           + `<label class="campo"><span class="muted">Nota</span><input type="text" name="nota-partecipanti" value="${esc(doc.nota_partecipanti)}"></label>`);
       } else if (R.SEZIONI_TESTO.includes(s.heading)) {
@@ -2839,10 +3779,24 @@ data_disponibilita_collaudo:
       const persona = ui.notaPersona(nome);
       if (!persona) return ui.toast("Scegli una persona dall'Anagrafica.", 'avviso');
       leggiAdm();
-      const fm = persona.frontmatter, parti = [(fm.direzione || '').trim(), (fm.ufficio || '').trim()].filter(Boolean).join(' – ');
-      adm.push({ ruolo: sigla ? `(${sigla}) ${parti}`.replace(/\s+$/, '') : parti, ufficio: '', nome: persona.titolo });
+      const fm = persona.frontmatter, direzione = (fm.direzione || '').trim();
+      adm.push({ ruolo: sigla ? `(${sigla}) ${direzione}`.replace(/\s+$/, '') : direzione, ufficio: (fm.ufficio || '').trim(), nome: persona.titolo });   // (SIGLA) DIREZIONE | UFFICIO
       renderPartecipanti();
     };
+    const importaCsv = async () => {   // resoconto_modifica.importa_csv: CSV della data del resoconto → liste ADM/SOGEI sostituite
+      const csv = LV.presenze.trovaCsv(n.rel.split('/').slice(0, -1).join('/').replace(/\/inviati$/, ''), doc.frontmatter.data_riunione || '');
+      if (!csv) return ui.toast('Nessun CSV presenze con la data di questa riunione nella cartella del rilascio.', 'avviso');
+      let presenze;
+      try { presenze = LV.presenze.parse(await LV.vault.leggiBinario(csv), csv.split('/').at(-1)); } catch (e) { return ui.toast(`CSV presenze non leggibile: ${e.message}`, 'errore'); }
+      const team = r ? LV.sk.teamFromRelease(LV.indice.files[r.rel].text, ui.persone().map((p) => p.nome)) : {};
+      const info = (nome) => (ui.notaPersona(nome) || {}).frontmatter || {};
+      const p = LV.sk.partecipantiDaPresenze(presenze, team, { ...(r ? r.frontmatter : {}), ...doc.frontmatter }, info);
+      adm = p.adm; sogei = p.sogei; renderPartecipanti();
+      ui.toast(`Importati ${adm.length} ADM e ${sogei.length} SOGEI da ${csv.split('/').at(-1)}`, 'ok');
+    };
+    const btnCsv = form.querySelector('.importa-csv');
+    if (btnCsv) btnCsv.onclick = () => ui.conBottone(btnCsv, importaCsv);
+    if (importaPresenze && btnCsv) importaCsv();
     const aggSogei = form.querySelector('.aggiungi-sogei');
     if (aggSogei) aggSogei.onclick = () => { const el = form.querySelector('[name="nuovo-sogei"]'); const v = el.value.trim(); if (!v) return; leggiAdm(); sogei.push(v); el.value = ''; renderPartecipanti(); };
     const leggiAzioni = () => { if (form.querySelector('.azioni')) azioni = Array.from(form.querySelectorAll('.azioni input')).map((i) => i.value); };
@@ -2933,6 +3887,7 @@ data_disponibilita_collaudo:
   ui.formNuovoResoconto = function (container, r, { dopo }) {
     const fasi = r.riunioni.map((m) => m.fase);
     const ammesse = LV.sk.fasiAmmesse(fasi);
+    const FASI_FONTI = ['Startup', 'Prima Analisi', 'SAL', 'Collaudo'];
     const oggi = LV.cruscotto.oggi();   // data locale
     container.innerHTML = `<form class="nuovo-resoconto card" onsubmit="return false"><b>Nuova riunione</b>
       <p class="muted">Lo scheletro nasce già compilato da scheda e Anagrafica (team della scheda: lista da integrare con il report presenze); restano da scrivere ARGOMENTI TRATTATI e AZIONI CONCORDATE.</p>
@@ -2942,10 +3897,14 @@ data_disponibilita_collaudo:
         ${ui.campoData('data', 'Data riunione', oggi, { weekend: true })}
         <label class="campo"><span class="muted">Variante collaudo</span><select name="variante"><option value="">—</option><option value="firma">Approvazione con firma (sezione FIRME nel Word)</option><option value="telematica">Approvazione telematica, da raccogliere via mail</option><option value="telematica_in_riunione">Approvazione telematica già data in riunione</option></select></label>
         <label class="campo largo"><span class="muted">Nome file trascritto (opzionale)</span><input name="trascritto"></label></div>
-      <p class="riga"><button type="button" class="primario crea-resoconto">Crea</button></p></form>`;
+      <p class="riga"><button type="button" class="primario crea-resoconto">Crea</button><button type="button" class="carica-fonti-prima" title="Trascritto e CSV presenze in _fonti/ prima di creare il resoconto">Carica fonti prima</button></p></form>`;
     const form = container.querySelector('form');
     ui.collegaCampi(form);
     const btnCrea = form.querySelector('.crea-resoconto');
+    form.querySelector('.carica-fonti-prima').onclick = () => {
+      const v = Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, (el.value || '').trim()]));
+      ui.dialogoCaricaFonti(r, { dataIso: LV.md.parseData(v.data) || '', fase: FASI_FONTI.includes(v.fase) ? v.fase : 'SAL', nSal: +v.n_sal || 1 });
+    };
     btnCrea.onclick = () => ui.conBottone(btnCrea, async () => {
       const v = Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, (el.value || '').trim()]));
       if (!v.fase) return ui.toast('Indica la fase.', 'avviso');
@@ -2961,18 +3920,30 @@ data_disponibilita_collaudo:
       const team = LV.sk.teamFromRelease(LV.indice.files[r.rel].text, persone);
       let verbale = null;
       if (etichetta === 'Collaudo' && r.verbali.length) { const vp = r.verbali.at(-1); verbale = LV.verb.parseVerbale(vp, LV.indice.files[vp].text, 0); }
-      const avvisi = ['Partecipanti dal team della scheda (lista incompleta): integra con il report presenze.'];
+      const dirRilascio = r.rel.split('/').slice(0, -1).join('/');
+      let presenze = null, csv = LV.presenze.trovaCsv(dirRilascio, dataIso);   // nuovo_resoconto.py: solo il CSV di QUESTA data
+      if (csv) {
+        try { presenze = LV.presenze.parse(await LV.vault.leggiBinario(csv), csv.split('/').at(-1)); if (!presenze.adm.length && !presenze.sogei.length) presenze = null; }
+        catch (e) { ui.toast(`CSV presenze non leggibile (${e.message}): partecipanti dal team della scheda.`, 'avviso'); presenze = null; }
+      }
+      const avvisi = presenze ? [`Partecipanti dal report presenze ${csv.split('/').at(-1)}.`] : ['Partecipanti dal team della scheda (lista incompleta): integra con il report presenze.'];
       if (etichetta === 'Collaudo' && !verbale) avvisi.push('Nessun Verbale di Collaudo: ESITO senza casi di test.');
       let testo;
-      try { testo = LV.sk.creaScheletro(r.frontmatter, etichetta, dataIso, { team, variante: v.variante || null, verbale, trascritto: v.trascritto, info, oggiIso: oggi }); }
+      try { testo = LV.sk.creaScheletro(r.frontmatter, etichetta, dataIso, { team, variante: v.variante || null, verbale, trascritto: v.trascritto, info, oggiIso: oggi, presenze }); }
       catch (e) { return ui.toast(e.message, 'avviso'); }
       try { await LV.vault.creaFile(rel, testo); } catch (e) { return ui.toast(e.message, 'errore', true); }
       try {
         const s = LV.indice.files[r.rel];
         await LV.vault.scriviFile(r.rel, LV.sk.aggiungiRiunione(s.text, dataIso, LV.sk.faseTabella(etichetta), v.trascritto, LV.modelli.stemDi(rel)), s.lastModified);
+        const av = await LV.vault.avanzaStato(r.rel, oggi).catch(() => null);   // la riga è scritta: un conflitto qui non è "riga non aggiunta"
+        if (av) ui.toast(`Stato ${r.codice}: ${av.da || '(vuoto)'} → ${av.a}`, 'ok');
       } catch (e) {   // come nuovo_resoconto.py: il file c'è, la riga si aggiunge a mano
         if (!(e instanceof LV.vault.ConflittoModifica)) return ui.toast(e.message, 'errore', true);
         avvisi.push('Scheda cambiata nel frattempo: riga Riunioni non aggiunta (aggiungila a mano).');
+      }
+      if (presenze) {   // come nuovo_resoconto.crea_resoconto: stub Anagrafica e email mancanti
+        try { const a = await LV.anagrafica.aggiornaDaPresenze(presenze); if (a.created.length) avvisi.push(`Stub Anagrafica creati: ${a.created.join(', ')}.`); for (const err of a.errori) avvisi.push(`Anagrafica: ${err}`); }
+        catch (e) { avvisi.push(`Anagrafica non aggiornata: ${e.message}`); }
       }
       for (const a of avvisi) ui.toast(a, 'avviso');
       dopo(LV.modelli.notaId(rel), avvisi);
@@ -3016,7 +3987,7 @@ data_disponibilita_collaudo:
     if (!res.in_inviati) {
       btn.push(`<button type="button" class="rigenera-docx"${dis} title="${dis ? esc(MOTIVO_BROWSER) : 'Word dal template: DATA COMPILAZIONE = oggi, mail obsoleta eliminata'}">Rigenera .docx</button>`);
       btn.push(`<button type="button" class="genera-mail"${dis || (s.docx ? '' : ' disabled title="Prima Rigenera .docx: la mail allega il Word"')}>Genera mail</button>`);
-    } else if ((fm.inviato || '').trim().toLowerCase() === 'true' && (fm.data_approvazione || '').trim() && s.pdf) {
+    } else if ((fm.inviato || '').trim().toLowerCase() === 'true' && (fm.data_approvazione || '').trim() && s.pdf && !LV.cruscotto.saltaDefinitivo(fm)) {
       btn.push(`<button type="button" class="mail-definitiva"${dis} title="Bozza .msg della versione definitiva con il PDF">Mail definitiva</button>`);
     }
     return `<div class="derivati riga">${riga}<span style="flex:1"></span>${btn.join(' ')}</div>`;
@@ -3035,7 +4006,7 @@ data_disponibilita_collaudo:
       ui.esegui(async () => {
         const x = await LV.vault.generaMail(res, { allegati: scelti });
         ui.toastPercorso(x.msg);
-        return { avvisi: x.mancanti.length ? [`Brezza email in Anagrafica, da aggiungere a mano in Outlook: ${x.mancanti.map(nomeMancante).join(', ')}`] : [] };
+        return { avvisi: x.mancanti.length ? [`Ciclone email in Anagrafica, da aggiungere a mano in Outlook: ${x.mancanti.map(nomeMancante).join(', ')}`] : [] };
       }, 'Bozza mail .msg creata accanto al resoconto: aprila in Outlook e invia.', gm);
     };
     const md = q('.mail-definitiva');
@@ -3045,7 +4016,7 @@ data_disponibilita_collaudo:
       ui.esegui(async () => {
       const x = await LV.vault.generaMailDefinitiva(res);
       ui.toastPercorso(x.msg);
-      return { avvisi: x.mancanti.length ? [`Brezza email in Anagrafica, da aggiungere a mano in Outlook: ${x.mancanti.map(nomeMancante).join(', ')}`] : [] };
+      return { avvisi: x.mancanti.length ? [`Ciclone email in Anagrafica, da aggiungere a mano in Outlook: ${x.mancanti.map(nomeMancante).join(', ')}`] : [] };
       }, 'Bozza della mail definitiva creata in inviati/.', md);
     };
   };
@@ -3058,7 +4029,7 @@ data_disponibilita_collaudo:
     d.innerHTML = `<form method="dialog"><h3>Genera mail</h3>
       <p><b>Destinatari</b> <span class="muted">(partecipanti del resoconto e team della scheda; si correggono in Outlook)</span></p>
       <p class="mono">${dest.a.map(esc).join(', ') || '<i class="muted">nessun indirizzo risolto</i>'}</p>
-      ${dest.mancanti.length ? `<p class="errore">Brezza email in Anagrafica: ${esc(dest.mancanti.map(nomeMancante).join(', '))}</p>` : ''}
+      ${dest.mancanti.length ? `<p class="errore">Ciclone email in Anagrafica: ${esc(dest.mancanti.map(nomeMancante).join(', '))}</p>` : ''}
       <p><b>Allegati</b>: il .docx del resoconto${pdf.length ? ' e i PDF spuntati. Per il collaudo telematico allega il documento di analisi con i suoi allegati.' : '. Nessun PDF nella cartella del rilascio.'}</p>
       ${pdf.map((k) => `<label class="riga"><input type="checkbox" name="pdf" value="${esc(k)}"> <span class="mono">${esc(k.split('/').at(-1))}</span></label>`).join('')}
       ${res.ha_msg ? '<p class="muted">Esiste già un .msg: "Genera" lo sovrascrive.</p>' : ''}
@@ -3086,6 +4057,230 @@ data_disponibilita_collaudo:
   };
 })(window.LV);
 
+/* === 77_ui_fonti.js === */
+/* Finestra "Carica fonti": trascritti (.docx/.md/.vtt), CSV presenze e PDF in _fonti/<AAAAMMGG> <Fase>/ del rilascio,
+   con conversione, Anagrafica e riga Riunioni (LV.fonti.carica). Replica di ui/pages/carica_fonti.py. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const ui = LV.ui, esc = LV.esc;
+  const FASI = ['Startup', 'Prima Analisi', 'SAL', 'Collaudo'];
+
+  ui.dialogoCaricaFonti = (r, { dataIso = '', fase = 'SAL', nSal = 1 } = {}) => new Promise((fine) => {
+    const dirRilascio = r.rel.split('/').slice(0, -1).join('/');
+    const d = document.createElement('dialog');
+    d.className = 'lv-dialog';
+    d.innerHTML = `<form class="fonti" onsubmit="return false"><h3>Carica fonti — ${esc(r.codice)}</h3>
+      <div class="griglia-form">
+        ${ui.campoData('data', 'Data riunione', dataIso, { weekend: true })}
+        <label class="campo"><span class="muted">Fase</span><select name="fase">${FASI.map((f) => `<option ${f === fase ? 'selected' : ''}>${f}</option>`).join('')}</select></label>
+        <label class="campo n-sal"><span class="muted">Numero SAL</span><input name="n_sal" type="number" min="1" value="${esc(String(nSal))}"></label>
+      </div>
+      <p><input type="file" name="file" multiple accept=".docx,.md,.vtt,.csv,.pdf"></p>
+      <p class="muted">Destinazione: _fonti/AAAAMMGG &lt;Fase&gt;/ del rilascio. I .docx/.vtt vengono convertiti in .md, il CSV presenze aggiorna
+        l'Anagrafica, il trascritto entra nella riga Riunioni se la colonna è vuota.</p>
+      <div class="esiti"></div>
+      <p class="riga"><button type="button" class="primario salva-fonti">Salva</button><button type="button" class="sovrascrivi" hidden></button><button type="button" class="chiudi">Chiudi</button></p></form>`;
+    document.body.appendChild(d);
+    const form = d.querySelector('form');
+    ui.collegaCampi(form);
+    const selFase = form.querySelector('[name=fase]'), nSalBox = form.querySelector('.n-sal');
+    const aggiornaSal = () => { nSalBox.hidden = selFase.value !== 'SAL'; };
+    selFase.onchange = aggiornaSal; aggiornaSal();
+    let caricato = false, conflitti = [];
+    const esiti = form.querySelector('.esiti'), btnSovr = form.querySelector('.sovrascrivi'), btnSalva = form.querySelector('.salva-fonti');
+    const mostra = (messaggi, link) => {
+      esiti.innerHTML = messaggi.map((m) => `<p class="${/conflitto|rifiutat|non /.test(m) ? 'avviso' : ''}">${esc(m)}</p>`).join('') + (link || '');
+      btnSovr.hidden = !conflitti.length;
+      btnSovr.textContent = `Sovrascrivi ${conflitti.length} file`;
+    };
+    const salva = (sovrascrivi) => ui.conBottone(btnSalva, async () => {
+      const iso = LV.md.parseData(form.querySelector('[name=data]').value);
+      if (!iso) return ui.toast('Data non valida: usa AAAA-MM-GG.', 'avviso');
+      const input = form.querySelector('[name=file]');
+      if (!input.files.length) return ui.toast('Nessun file caricato.', 'avviso');
+      const etichetta = LV.sk.etichettaFase(selFase.value, +form.querySelector('[name=n_sal]').value || 1);
+      const faseTab = LV.sk.faseTabella(etichetta);
+      const files = [];
+      for (const f of input.files) files.push({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
+      let out;
+      try { out = await LV.fonti.carica({ dirRilascio, schedaRel: r.rel, dataIso: iso, faseTab, files, sovrascrivi }); }
+      catch (e) { return ui.toast(`Caricamento non riuscito: ${e.message}`, 'errore', true); }
+      caricato = true;
+      conflitti = out.conflitti;
+      let link = '';
+      if (out.resocontoBozza && out.presenze) {
+        const nid = LV.modelli.notaId(out.resocontoBozza);
+        link = `<p><a href="#/resoconto/${encodeURIComponent(nid)}/modifica?presenze=1" class="apri-editor-presenze">Apri l'editor del resoconto e importa le presenze</a></p>`;
+      }
+      mostra(out.messaggi, link);
+      const a = esiti.querySelector('.apri-editor-presenze');
+      if (a) a.onclick = () => d.close();
+    });
+    btnSalva.onclick = () => salva(new Set());
+    btnSovr.onclick = () => salva(new Set(conflitti));
+    form.querySelector('.chiudi').onclick = () => d.close();
+    d.addEventListener('close', () => { d.remove(); if (caricato) ui.naviga(); fine(); });
+    d.showModal();
+  });
+})(window.LV);
+
+/* === 78_ui_convocazione.js === */
+/* Finestra "Convoca startup" / "Convoca collaudo": bozza .eml con invito calendario (+ PDF del piano di test e Verbale di
+   Collaudo per il collaudo) scritta nella cartella del rilascio da LV.vault.generaConvocazione. Replica di ui/pages/convocazione.py. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const ui = LV.ui, esc = LV.esc, C = LV.conv;
+
+  ui.dialogoConvocazione = (r, tipo) => new Promise((fine) => {
+    const startup = tipo === 'startup', oggi = LV.cruscotto.oggi(), dir = r.rel.split('/').slice(0, -1).join('/');
+    const fm = LV.md.parseFrontmatter(LV.indice.files[r.rel].text);
+    const dataProposta = startup ? C.giorniLavorativiDopo(oggi, 7) : C.dataProposta(fm, oggi);
+    const organizzatore = C.organizzatoreDefault(LV.indice, LV.ui.anno || LV.vault.annoDefault());
+    const pre = startup ? null : (() => {   // precompila_collaudo: Piano di Test.md e PDF del rilascio
+      const relPiano = C.trovaPianoTest(dir, LV.indice);
+      const piano = relPiano ? C.parsePianoTest(LV.indice.files[relPiano].text) : { documento: '', verifiche: [] };
+      return { ...piano, trovato: !!relPiano, pdf: LV.vault.pdfDelRilascioEFonti(dir) };
+    })();
+    const d = document.createElement('dialog');
+    d.className = 'lv-dialog';
+    d.innerHTML = `<form class="convocazione" onsubmit="return false"><h3>Convoca ${startup ? 'startup' : 'collaudo'} — ${esc(r.codice)}</h3>
+      <div class="griglia-form">
+        ${ui.campoData('data', 'Data (AAAA-MM-GG)', dataProposta, { weekend: true })}
+        <label class="campo"><span class="muted">Ora</span><input name="ora" value="10:00" placeholder="HH:MM"></label>
+        <label class="campo"><span class="muted">Durata (min)</span><input name="durata" type="number" min="15" value="${startup ? 30 : 60}"></label>
+        <label class="campo"><span class="muted">Organizzatore (mittente)</span><input name="organizzatore" value="${esc(organizzatore)}" placeholder="nome.cognome@adm.gov.it"></label>
+      </div>
+      ${!startup && !dataProposta ? '<p class="avviso">Data non proponibile (data_disponibilita_collaudo assente o DA COMPLETARE): indicala a mano.</p>' : ''}
+      ${startup ? `<p class="muted">Date alternative (facoltative)</p><div class="griglia-form">${[1, 2, 3].map((i) => `${ui.campoData(`alt_data_${i}`, `Alternativa ${i} (AAAA-MM-GG)`, '', { weekend: true })}<label class="campo"><span class="muted">Ora</span><input name="alt_ora_${i}" placeholder="HH:MM"></label>`).join('')}</div>`
+        : `${pre.trovato ? '' : '<p class="avviso">Piano di Test.md non trovato: compila documento e verifiche a mano.</p>'}
+      <label class="campo"><span class="muted">PDF del piano di test (allegato)</span><select name="pdf"><option value="">—</option>${pre.pdf.map((k) => `<option value="${esc(k)}" ${pre.pdf.length === 1 ? 'selected' : ''}>${esc(k.slice(dir.length + 1))}</option>`).join('')}</select></label>
+      <label class="campo"><span class="muted">Documento di analisi</span><input name="documento" value="${esc(pre.documento)}"></label>
+      <label class="campo"><span class="muted">Casi di test (uno per riga)</span><textarea name="verifiche" rows="8">${esc(pre.verifiche.join('\n'))}</textarea></label>`}
+      <p class="muted">Genera una bozza .eml da aprire in Outlook e inviare a mano; se esiste già viene sostituita, il Verbale non viene mai sovrascritto. Nessuna mail viene inviata dall'app.</p>
+      <div class="esiti"></div>
+      <p class="riga"><button type="button" class="primario genera">Genera</button><button type="button" class="chiudi">Chiudi</button></p></form>`;
+    document.body.appendChild(d);
+    const form = d.querySelector('form');
+    ui.collegaCampi(form);
+    const v = (n) => (form.querySelector(`[name=${n}]`).value || '').trim();
+    let generato = false;
+    const esiti = form.querySelector('.esiti'), btn = form.querySelector('.genera');
+    btn.onclick = () => ui.conBottone(btn, async () => {
+      const dataIso = LV.md.parseData(v('data'));
+      if (!dataIso) return ui.toast('Data non valida: usa AAAA-MM-GG.', 'avviso');
+      const ora = v('ora'), motivo = C.validaOra(ora);
+      if (motivo) return ui.toast(motivo, 'avviso');
+      const organizzatore = v('organizzatore');
+      if (!organizzatore.includes('@')) return ui.toast('Organizzatore: serve un indirizzo email.', 'avviso');
+      const durata = Math.max(15, parseInt(v('durata'), 10) || 0);
+      const o = { schedaRel: r.rel, tipo, dataIso, ora, durata, organizzatore };
+      if (startup) {
+        const alt = C.alternativeDaRighe([1, 2, 3].map((i) => [v(`alt_data_${i}`), v(`alt_ora_${i}`)]));
+        if (alt.errore) return ui.toast(alt.errore, 'avviso');
+        o.alternative = alt.alternative;
+      } else {
+        o.pdfRel = v('pdf'); o.documento = v('documento'); o.verifiche = C.pulisciVerifiche(v('verifiche'));
+        if (!o.pdfRel || !o.documento) return ui.toast('PDF e documento di analisi sono obbligatori.', 'avviso');
+        if (!o.verifiche.length) return ui.toast('Almeno un caso di test.', 'avviso');
+      }
+      let out;
+      try { out = await LV.vault.generaConvocazione(o); }
+      catch (e) { return ui.toast(`Convocazione non generata: ${e.message}`, 'errore', true); }
+      generato = true;
+      const win = out.eml.replace(/\//g, '\\');
+      const righe = [`<p>Bozza: <span class="mono">${esc(win)}</span> <button type="button" class="copia-percorso">Copia percorso</button></p>`,
+        `<p>A: <span class="mono">${esc(out.a) || '<i class="muted">nessuno</i>'}</span> · Cc: <span class="mono">${esc(out.cc.join(', ')) || '<i class="muted">nessuno</i>'}</span></p>`];
+      if (!out.a) righe.push('<p class="avviso">Destinatario A non risolto: completalo in Outlook</p>');
+      if (out.mancanti.length) righe.push(`<p class="avviso">Email mancanti in Anagrafica: ${esc(out.mancanti.join(', '))}</p>`);
+      if (out.bozzaEliminata) righe.push(`<p>Bozza precedente eliminata: <span class="mono">${esc(out.bozzaEliminata.split('/').at(-1))}</span></p>`);
+      if (out.verbaleRinominato) righe.push(`<p>Verbale rinominato: <span class="mono">${esc(out.verbaleRinominato.split('/').at(-1))}</span> → <span class="mono">${esc(out.verbale.split('/').at(-1))}</span> (esiti conservati)</p>`);
+      else if (out.verbale) righe.push(out.verbaleEsistente ? '<p>Verbale già presente, non sovrascritto</p>' : `<p>Verbale creato: <span class="mono">${esc(out.verbale.split('/').at(-1))}</span></p>`);
+      esiti.innerHTML = righe.join('');
+      esiti.querySelector('.copia-percorso').onclick = () => navigator.clipboard.writeText(win)
+        .then(() => ui.toast('Percorso copiato: incollalo in Esplora file dentro la cartella del vault.'))
+        .catch(() => ui.toast('Copia negli appunti non riuscita: segna il percorso a mano.', 'avviso'));
+    });
+    form.querySelector('.chiudi').onclick = () => d.close();
+    d.addEventListener('close', () => { d.remove(); if (generato) ui.naviga(); fine(); });
+    d.showModal();
+  });
+})(window.LV);
+
+/* === 79_ui_lettere.js === */
+/* Finestra "Lettere di fine collaudo": compila i due template Word (Trasmissione copia verbale · Richiesta estensione in
+   esercizio) con i dati del rilascio e li scrive nella root del rilascio (LV.vault.generaLettere). PDF e cartella
+   "da mandare in firma" restano al sync del master. Nessun dialogo equivalente nell'app Python. */
+window.LV = window.LV || {};
+(function (LV) {
+  'use strict';
+  const ui = LV.ui, esc = LV.esc, L = LV.lettere;
+  const ESITI = ['POSITIVO', 'con riserva', 'NEGATIVO'];
+  const AVVISO_NEGATIVO = 'senza esito positivo non si chiede l\'estensione';
+
+  ui.dialogoLettere = (r) => new Promise(async (fine) => {
+    const d = document.createElement('dialog');
+    d.className = 'lv-dialog';
+    let dati;
+    try { dati = await L.datiLettereConCsv(r, LV.indice); }
+    catch (e) { ui.toast(`Dati delle lettere non leggibili: ${e.message}`, 'errore', true); return fine(); }
+    const sel = (v) => ESITI.map((x) => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
+    const fonte = { resoconto: 'dal resoconto di collaudo', csv: 'dal CSV presenze del collaudo', team: 'dal team della scheda', '': 'nessuna fonte: compila a mano' }[dati.fonte_nomi];
+    d.innerHTML = `<form class="lettere" onsubmit="return false"><h3>Lettere di fine collaudo — ${esc(r.codice)}</h3>
+      <p class="muted">Rilascio: <span class="mono">${esc(dati.rilascio)}</span> · progetto ${esc(dati.progetto)} ${esc(dati.descrizione_progetto)} · sottoprogetto ${esc(dati.sottoprogetto)}</p>
+      <p class="riga"><label><input type="checkbox" name="trasmissione" checked> Trasmissione copia verbale di collaudo</label>
+        <label><input type="checkbox" name="estensione" ${dati.esito === 'NEGATIVO' ? '' : 'checked'}> Richiesta estensione in esercizio</label></p>
+      <div class="griglia-form">
+        <label class="campo"><span class="muted">Rappresentanti ADM (uno per riga, Cognome Nome; per un cognome composto non riconosciuto scrivi Cognome | Nome · ${esc(fonte)})</span><textarea name="adm" rows="6">${esc(dati.adm.join('\n'))}</textarea></label>
+        <label class="campo"><span class="muted">Rappresentanti SOGEI (uno per riga)</span><textarea name="sogei" rows="6">${esc(dati.sogei.join('\n'))}</textarea></label>
+        <label class="campo"><span class="muted">Esito del collaudo</span><select name="esito">${sel(dati.esito)}</select></label>
+        <label class="campo"><span class="muted">Direzione di business (p.c.)</span><input name="direzione" value="${esc(dati.direzione)}"></label>
+        <label class="campo"><span class="muted">Ufficio del Responsabile di Business (p.c.)</span><input name="ufficio" value="${esc(dati.ufficio)}"></label>
+        <label class="campo"><span class="muted">Area di Staff (p.c.)</span><input name="area_staff" value="${esc(dati.area_staff)}"></label>
+      </div>
+      <div class="avvisi">${dati.avvisi.map((a) => `<p class="avviso">${esc(a)}</p>`).join('')}${dati.esito === 'NEGATIVO' ? `<p class="avviso negativo">${esc(AVVISO_NEGATIVO)}</p>` : ''}</div>
+      <p class="riga"><label><input type="checkbox" name="sovrascrivi"> Sovrascrivi le lettere esistenti (svuota anche la cartella dei PDF da mandare in firma)</label></p>
+      <p class="muted">I .docx vanno nella cartella del rilascio e compaiono in Da firmare quando il collaudo è registrato come svolto; i PDF per Arcipelago li prepara il sync del PC master. Rileggi l'intestazione in Word prima della firma.</p>
+      <div class="esiti"></div>
+      <p class="riga"><button type="button" class="primario genera">Genera</button><button type="button" class="chiudi">Chiudi</button></p></form>`;
+    document.body.appendChild(d);
+    const form = d.querySelector('form'), v = (n) => (form.querySelector(`[name=${n}]`).value || '').trim();
+    const selEsito = form.querySelector('[name=esito]'), chkEst = form.querySelector('[name=estensione]'), avvisi = form.querySelector('.avvisi');
+    selEsito.onchange = () => {
+      const neg = selEsito.value === 'NEGATIVO';
+      if (neg) chkEst.checked = false;
+      const gia = avvisi.querySelector('.negativo');
+      if (neg && !gia) avvisi.insertAdjacentHTML('beforeend', `<p class="avviso negativo">${esc(AVVISO_NEGATIVO)}</p>`);
+      if (!neg && gia) gia.remove();
+    };
+    let generato = false;
+    const esiti = form.querySelector('.esiti'), btn = form.querySelector('.genera');
+    btn.onclick = () => ui.conBottone(btn, async () => {
+      const lettere = L.LETTERE.map(([t]) => t).filter((t) => form.querySelector(`[name=${t}]`).checked);
+      if (!lettere.length) return ui.toast('Seleziona almeno una lettera.', 'avviso');
+      const righe = (n) => v(n).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+      const o = { ...dati, adm: righe('adm'), sogei: righe('sogei'), esito: selEsito.value, direzione: v('direzione'), ufficio: v('ufficio'), area_staff: v('area_staff') || 'Area di Staff' };
+      if (lettere.includes('trasmissione') && !(o.adm.length && o.sogei.length)) return ui.toast('Per la Trasmissione servono almeno un nome ADM e uno SOGEI.', 'avviso');
+      let out;
+      try { out = await LV.vault.generaLettere({ schedaRel: r.rel, lettere, dati: o, sovrascrivi: form.querySelector('[name=sovrascrivi]').checked }); }
+      catch (e) { return ui.toast(`Lettere non generate: ${e.message}`, 'errore', true); }
+      generato = true;
+      const stato = { creata: 'creata', esistente: 'esistente, non sovrascritta', sovrascritta: 'sovrascritta' };
+      esiti.innerHTML = out.esiti.map((e) => `<p>${esc(L.etichetta(e.tipo))}: ${esc(stato[e.stato])}: <span class="mono">${esc(e.rel.split('/').at(-1))}</span>${e.svuotati.length ? ` — cartella dei PDF svuotata: il sync del master la rigenera (${e.svuotati.length} file)` : ''}</p>`).join('')
+        + out.avvisi.map((a) => `<p class="avviso">${esc(a)}</p>`).join('')
+        + `<p><button type="button" class="copia-percorso">Copia percorso della cartella</button></p>`;
+      const win = r.rel.split('/').slice(0, -1).join('\\');
+      esiti.querySelector('.copia-percorso').onclick = () => navigator.clipboard.writeText(win)
+        .then(() => ui.toast('Percorso copiato: incollalo in Esplora file dentro la cartella del vault.'))
+        .catch(() => ui.toast('Copia negli appunti non riuscita: segna il percorso a mano.', 'avviso'));
+    });
+    form.querySelector('.chiudi').onclick = () => d.close();
+    d.addEventListener('close', () => { d.remove(); if (generato) ui.naviga(); fine(); });
+    d.showModal();
+  });
+})(window.LV);
+
 /* === 80_ui_modifica.js === */
 /* Modifica scheda: solo i campi strutturati, scrive solo le chiavi cambiate (traduzione di rilascio_modifica.py). */
 (function (LV) {
@@ -3107,13 +4302,16 @@ data_disponibilita_collaudo:
         ${txt('descrizione_progetto', 'Descrizione progetto', fm.descrizione_progetto || '')}
         ${sel('stato', 'Stato', conCorrente(S.STATI, fm.stato || 'Bozza'), fm.stato || 'Bozza')}
         ${sel('vincoli_normativi', 'Vincoli normativi', conCorrente(['Sì', 'No'], fm.vincoli_normativi || 'No'), fm.vincoli_normativi || 'No')}
-        ${txt('nota_variazione_date', 'Nota variazione date', fm.nota_variazione_date || '')}</div></div>
+        ${txt('nota_variazione_date', 'Nota variazione date', fm.nota_variazione_date || '')}
+        <label class="campo"><span class="muted">Avanzamento automatico</span><span><input type="checkbox" name="stato_manuale" ${(fm.stato_manuale || '').trim().toLowerCase() === 'true' ? 'checked' : ''}> Stato manuale (blocca l'avanzamento automatico)</span></label></div></div>
       <div class="card"><b>Team</b><div class="griglia-form">${S.CAMPI_TEAM.map(([k, l]) => (k === 'struttura_business' ? txt(k, l, fm[k] || '') : ui.campoPersona(k, l, fm[k] || ''))).join('')}</div></div>
       <div class="card"><b>Date (AAAA-MM-GG)</b><div class="griglia-form">${S.CAMPI_DATE.map(([k, l]) => ui.campoData(k, l, fm[k] || '')).join('')}</div></div>
+      <div class="card protocolli"><b>Protocolli</b><div class="griglia-form">${S.CAMPI_PROTOCOLLI.map(([k, l]) => txt(k, l, fm[k] || '', true)).join('')}</div>
+        <p class="muted">Numero e data del protocollo ADM, es. <span class="mono">1068 del 05/10/2026 (Registro Contratto; rif. SOGEI 58059/RU)</span>; <span class="mono">DA COMPLETARE</span> finché manca il numero ADM (il riferimento SOGEI non è un protocollo ADM). La tabella "Allegati protocolli" si compila in Obsidian.</p></div>
       <p class="riga"><button type="button" class="primario salva">Salva modifiche</button><a class="bottone" href="#/rilascio/${esc(codice)}">Annulla</a><span class="azioni-conflitto"></span></p></form>`;
     const form = main.querySelector('form');
     ui.collegaCampi(form);
-    const valori = () => Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, (el.value || '').trim()]));
+    const valori = () => Object.fromEntries(Array.from(form.querySelectorAll('[name]')).map((el) => [el.name, el.type === 'checkbox' ? (el.checked ? 'true' : '') : (el.value || '').trim()]));
     const iniziali = valori();
     const btnSalva = form.querySelector('.salva');
     btnSalva.onclick = () => ui.conBottone(btnSalva, async () => {
@@ -3133,6 +4331,10 @@ data_disponibilita_collaudo:
         return;
       }
       ui.toast(`Scheda aggiornata (${Object.keys(mod).join(', ')}).`, 'ok');
+      if (!('stato' in mod)) {   // stato scelto a mano in questo salvataggio: non lo si riavanza (lo farà il sync del master, salvo stato_manuale)
+        const av = await LV.vault.avanzaStato(r.rel).catch(() => null);
+        if (av) ui.toast(`Stato ${codice}: ${av.da || '(vuoto)'} → ${av.a}`, 'ok');
+      }
       ui.naviga(`#/rilascio/${codice}`);
     });
   };
@@ -3275,7 +4477,7 @@ data_disponibilita_collaudo:
 })(window.LV);
 
 /* === manuale === */
-LV.manuale = "# Manuale di LeviathADM\n\nLeviathADM è il cruscotto del Piano Operativo (PO): legge e scrive direttamente i file markdown del vault Obsidian (\"PO 2026/\", \"Anagrafica/\") e non ha un database. Esiste in due versioni con le stesse regole:\n\n| Versione | Come si avvia | Quando usarla |\n|---|---|---|\n| **Python** (dashboard locale) | `leviathadm.cmd` nella radice del vault, poi `http://127.0.0.1:8080` | PC con Python: tutte le funzioni, comprese le azioni che lanciano gli script (convocazioni, sync, Word, Outlook) |\n| **Web** (`leviathadm.html`) | doppio clic sul file in Edge o Chrome, poi \"Apri cartella\" | PC senza Python: lettura e scrittura del vault nel browser, nessuna installazione |\n\nQuesto manuale è lo stesso nelle due versioni: le differenze sono indicate dove servono e riassunte in fondo.\n\n**Regola che vale sempre:** l'applicazione **non invia mai una mail**. Produce solo bozze (`.msg` per i resoconti, `.eml` per le convocazioni) che si aprono in Outlook e si inviano a mano.\n\n---\n\n## Avvio\n\n**Versione Python.** `leviathadm.cmd` crea l'ambiente virtuale `.venv/` al primo avvio, installa i requisiti, verifica pacchetti, Outlook, Word, pandoc, ruolo del PC e porta, poi apre il server su `http://127.0.0.1:8080`. Opzioni: `--check` (solo verifiche), `--porta N` (altra porta). L'app va avviata da una console propria e fermata con Ctrl+C. Nel pack demo `leviathadm.cmd` usa il Python embedded della cartella `python/`.\n\n**Versione Web.** Aprire `leviathadm.html`, premere **Apri cartella…** e scegliere la cartella del vault (quella che contiene `PO 2026/` e `Anagrafica/`). Il browser chiede il permesso a ogni apertura e non memorizza nulla della cartella scelta. Serve Edge o Chrome (File System Access); se una policy aziendale blocca l'accesso ai file compare un avviso nella schermata iniziale. Il pulsante **⟳** nell'header rilegge tutti i file dal disco.\n\n**Header e menu.** Il menu laterale (☰) elenca le viste; il selettore del **piano** (anno) nell'header sceglie la cartella `PO <anno>/` quando il vault ne contiene più di una; **◐** cambia tema chiaro/scuro. Nella versione Python c'è anche la **ricerca globale** (Ctrl+K) su codici, titoli e testi delle note.\n\n---\n\n## Rilasci\n\nLa vista iniziale elenca i punti di piano del piano selezionato: codice, descrizione, stato, PM, RA, RP, collaudo previsto / effettivo, rilascio previsto / effettivo. Le intestazioni ordinano la tabella (per data dove la colonna è una data); i filtri in alto restringono per stato o testo.\n\nGli **stati** del ciclo di vita, in ordine: Da Avviare, Bozza, Startup, Analisi, In corso, In Verifica, Collaudo, Concluso. Lo stato aggiuntivo **Rinominato** segnala una scheda storica rinumerata o confluita in un altro codice (campo `codice_rilascio_successivo`).\n\n### Dettaglio del rilascio\n\nUn clic sulla riga apre la scheda `ADMxxx-xx-xX.md`:\n\n- **Metadati e team**: codici e descrizioni di progetto, sottoprogetto e rilascio; PM, RA, RP, referente business e struttura, referente SOGEI; vincoli normativi; date; protocolli.\n- **Ciclo di vita**: lo stepper delle riunioni (Startup → Prima Analisi → SAL → Collaudo) con, per ogni fase, il resoconto collegato. Lo step **+** crea un nuovo resoconto (vedi \"Resoconti\").\n- **Riunioni, Azioni aperte, Decisioni chiave, Prossima riunione**: le sezioni della scheda. Le azioni con una scadenza (`— scadenza: GG/MM/AAAA`) compaiono anche in Scadenze.\n- **Allegati protocolli**: la tabella dei documenti protocollati (analisi, approvazione, disponibilità a collaudo, collaudo, estensione).\n- **Modifica scheda**: modulo con i campi del frontmatter. Si salvano **solo le chiavi cambiate**; le date si normalizzano in ISO; `DA COMPLETARE` è ammesso dove un dato non è ancora noto.\n- **Azioni** (solo Python): Carica fonti, Convocazione startup, Convocazione collaudo, Genera mail resoconto, Prepara cartella firma. Lanciano gli script del vault in un sottoprocesso; l'output compare nel pannello.\n\n### Nuovo punto di piano\n\nDal menu **Nuovo punto di piano**: codice rilascio, sottoprogetto, descrizioni, ruoli, date. Crea la cartella `PO <anno>/<codice>/` e la scheda nello stesso formato di quelle generate dall'Excel PO. Il codice deve avere la forma `ADMxxx-xx-xX` e non esistere già. I campi persona suggeriscono i nomi dell'Anagrafica e con l'icona a destra creano al volo una nuova persona.\n\n---\n\n## Resoconti\n\nOgni riunione produce un resoconto `ADMxxx-xx-xX - AAAAMMGG Resoconto <Tipo>.md` nella cartella del rilascio (la **bozza**); dopo l'invio i file passano in `inviati/`.\n\n### Nuovo resoconto\n\nDallo step **+** del ciclo di vita (o dal pulsante \"Nuovo resoconto\" nella versione Python): si sceglie la fase (uguale o successiva all'ultima già fatta, o un testo libero) e la data. Viene generato lo **scheletro** con le sezioni fisse già compilate dalla scheda e dall'Anagrafica: tabelle RIUNIONE / RESOCONTO / OBIETTIVO, LISTA PARTECIPANTI, formula dell'OBIETTIVO DELLA RIUNIONE; nella scheda viene aggiunta la riga in `## Riunioni` con ❌ (non inviato). Restano da scrivere **ARGOMENTI TRATTATI** e **AZIONI CONCORDATE** (per il collaudo: ESITO, con i casi di test presi dal Verbale).\n\nNella versione Python i partecipanti possono venire dal **CSV presenze di Teams** caricato con \"Carica fonti\"; nella versione Web vengono dal team della scheda (la lista va completata a mano).\n\n### Editor a sezioni\n\nIl resoconto si modifica sezione per sezione: partecipanti (selettore con i nomi dell'Anagrafica), argomenti, azioni (una per riga, con responsabile e data), esito del collaudo. Si riscrivono **solo le sezioni cambiate**; `data_riunione`, `approvato_da` e `data_approvazione` restano allineati tra frontmatter e tabelle. Sotto lo stepper del ciclo di vita compare il resoconto della fase scelta: editor inline se è una bozza, sola lettura con il lucchetto se è già inviato.\n\n### Dal markdown al Word\n\n- **Rigenera .docx** produce il documento Word ufficiale dal `.md` con il template giusto (startup/analisi/SAL, collaudo con firme o con approvazione telematica) e imposta DATA COMPILAZIONE a oggi, nel `.md` e nel Word. Il `.msg` precedente, ormai superato, viene eliminato. Funziona in entrambe le versioni: nel browser il Word nasce dallo stesso template, letto dalla cartella `Template/` del vault, e viene scritto accanto al `.md`.\n- **Genera mail** crea la bozza `.msg` con il Word allegato: oggetto, testo dal template di mail (variante telematica per i collaudi con approvazione telematica), destinatari dai partecipanti del resoconto e dal team della scheda (email dall'Anagrafica; chi non ha l'email viene elencato, da aggiungere a mano in Outlook). Nella finestra scegli i PDF della cartella del rilascio da allegare (per il collaudo telematico il documento di analisi con i suoi allegati). Nella versione Python la bozza la compone Outlook stesso, con la firma istituzionale; nel browser il `.msg` è scritto dall'app e porta la firma testuale del template: per quella di Outlook usa Inserisci → Firma prima di inviare. Il `.msg` si apre con doppio clic (versione Python: pulsanti **Apri in Outlook** e **Apri cartella**; Web: **Copia percorso** nell'esito).\n- Se modifichi il `.md` dopo aver generato Word e mail, Bozze da inviare segnala ⚠️ \"docx superato\": rigenera il Word e poi la mail. Anche il sync (versione Python) rigenera i Word superati.\n\n### Invio e approvazione tacita\n\n1. Quando la mail è stata inviata davvero, **Segna inviato** (vista \"Bozze da inviare\"): i file passano in `inviati/`, `inviato: true`, `data_scadenza_approvazione` = +5 giorni lavorativi, ✅ nella scheda.\n2. Alla scadenza senza osservazioni il resoconto è approvato tacitamente: **Chiudi approvazione** registra `data_approvazione`; PDF e mail definitiva li completa il sync del master.\n3. **Mail definitiva** (quando il PDF esiste): bozza `.msg` con il template \"versione definitiva\" e il PDF allegato; poi **Segna definitivo inviato** chiude il ciclo (`definitivo_inviato: true`).\n\n### Riporta in bozza\n\nPer rettificare un resoconto già inviato: **Riporta in bozza** riporta `.md` e `.docx` nella cartella del rilascio, elimina il `.msg` obsoleto, azzera `inviato` e la scadenza, rimette ❌ nella scheda. Si corregge, si rigenera il `.docx` e al prossimo invio si segna di nuovo inviato.\n\n### Verbale di Collaudo\n\nLa convocazione del collaudo crea `ADMxxx-xx-xX - AAAAMMGG Verbale di Collaudo.md` con l'elenco delle verifiche. L'editor del Verbale (dal dettaglio rilascio) permette di segnare ogni verifica come superata o non superata, con data, tester e note, e l'esito complessivo (positivo, con riserva, negativo): riepilogo e dettaglio restano allineati. Il resoconto di collaudo prende da qui i casi di test e l'esito.\n\n---\n\n## Cruscotto\n\nCinque viste, le stesse delle pagine generate in Obsidian, calcolate al volo dai file del vault.\n\n### Scadenze\n\nQuattro sezioni: **Tassative** (convocazione del collaudo entro 20 giorni dalla disponibilità a collaudo: obbligo normativo, con nota \"provvisoria\" finché il protocollo ADM non è noto), **Scadute**, **Questa settimana**, **Prossime**. Vi compaiono le milestone delle schede (fine analisi, collaudo previsto, rilascio previsto), le azioni aperte con data e le scadenze di approvazione tacita dei resoconti inviati.\n\n### Bozze da inviare\n\n- **Approvazioni tacite scadute**: resoconti inviati oltre la scadenza senza approvazione → Chiudi approvazione.\n- **Bozze iniziali**: resoconti pronti nella cartella del rilascio, con lo stato di `.docx` e `.msg` → Segna inviato (chiede conferma se manca il `.msg` e ricorda la scadenza +5 giorni lavorativi).\n- **Convocazioni da inviare**: le `.eml` di startup e collaudo → Segna inviata (sposta in `inviati/`).\n- **Definitivi**: resoconti approvati di cui manca l'invio della versione definitiva → Segna definitivo inviato.\n\nUn resoconto di collaudo precompilato prima della riunione **non** compare tra le bozze finché la scheda non ha `data_collaudo_effettiva` (vedi \"Da collaudare\").\n\n### Da collaudare\n\nPunti di piano con disponibilità a collaudo ricevuta e collaudo non ancora svolto. Il campo **Data collaudo effettiva** registra la riunione avvenuta (mai una data futura; conferma richiesta se cade di sabato o domenica) e fa rientrare il resoconto di collaudo nel flusso delle bozze.\n\n### Da firmare\n\nLettere di fine collaudo (Trasmissione copia verbale · Richiesta estensione in esercizio) presenti nella cartella del rilascio: **da mandare in firma** e **in attesa di protocollazione**. I pulsanti registrano i passaggi (`in_firma`, `protocollata`); nella versione Python \"Prepara cartella firma\" produce la cartella con i PDF.\n\n### Stato invii\n\nMatrice punti di piano × fase: per ogni resoconto **P** = provvisorio inviato, **D** = definitivo inviato, con il link al file. Sola lettura: gli stati si cambiano da \"Bozze da inviare\".\n\n---\n\n## Anagrafica\n\nElenco delle persone del vault (`Anagrafica/<Cognome Nome>.md`) con filtro per nome, organizzazione, direzione e ufficio. **Nuova persona** crea la scheda con organizzazione, direzione, ufficio, email e ruolo tipico; la stessa cosa si può fare al volo dai campi persona di Modifica scheda, Nuovo punto di piano e del selettore dei partecipanti. I nodi delle strutture (direzioni, uffici) stanno in `Anagrafica/Strutture/`.\n\n---\n\n## Azioni e Sync (versione Python)\n\nLa pagina **Azioni** raccoglie le operazioni che lanciano gli script del vault: daily check, rigenerazione delle pagine, schede dall'Excel PO, strutture, refresh Anagrafica, audit degli invii, organizzazione delle cartelle Outlook. Ogni pulsante è disabilitato, con il motivo, quando manca un prerequisito (Outlook, Word, pandoc) o quando l'azione è riservata al PC **master**.\n\nIl pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera i `.msg` mancanti, ricostruisce la cartella locale `Bozze da inviare/`, archivia gli inviati e, sul master, chiude le approvazioni tacite e rigenera i `.docx` superati. **Durante un'azione ogni scrittura dell'app è sospesa** (banner in alto), così nessun file si sposta mentre git lavora. **Log azioni** mostra la cronologia delle esecuzioni.\n\n**Vault senza git.** La versione web e il pack dimostrativo sono strumenti autonomi sul PC di utilizzo: non scrivono mai su git. Se il vault non è un repository git, il sync salta pull e push e fa solo il ricalcolo locale (pagine, Bozze da inviare, archiviazione, `.msg` mancanti con Outlook, PDF con Word).\n\n**Ruoli dei PC.** `scripts/machines.json` assegna a ogni hostname il ruolo master o slave: il master è l'unico che esegue l'automazione mutante; gli slave leggono, scrivono e sincronizzano. **Riavvia backend** (nel menu) riavvia il server in una nuova console.\n\n---\n\n## Regole comuni e casi particolari\n\n- **Conflitti di modifica.** Prima di scrivere, l'app verifica che il file non sia cambiato sul disco da quando lo ha letto (nella versione Web: data di modifica e contenuto). In caso di conflitto compare **Ricarica**: il file viene riletto senza svuotare il modulo, poi si risalva.\n- **Fine settimana.** I campi data delle riunioni chiedono conferma se la data cade di sabato o domenica; \"Cambia data\" svuota il campo.\n- **Pausa pranzo.** Le convocazioni non possono iniziare tra le 12:30 e le 14:00.\n- **Formato dei file.** I file esistenti conservano i fine riga (CRLF) e l'eventuale BOM; i file nuovi sono in UTF-8 con LF. Il frontmatter si aggiorna chiave per chiave, senza riscrivere il resto.\n- **Pagine generate.** Rilasci, Riunioni, Bozze da inviare, Stato invii, Scadenze, Da collaudare e Da firmare in `PO <anno>/` sono prodotte dagli script: le viste dell'app mostrano gli stessi dati, non vanno editate a mano.\n- **Contratto dei dati.** Campi, formati e chi legge/scrive ogni sezione sono descritti in `SCHEMA.md`.\n\n---\n\n## Versione Web: differenze\n\n| Funzione | Python | Web |\n|---|---|---|\n| Lettura di rilasci, resoconti, note, Anagrafica | sì | sì |\n| Modifica scheda, Nuovo punto di piano, Nuova persona | sì | sì |\n| Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza | sì | sì (partecipanti dal team, senza CSV presenze) |\n| Cruscotto con Segna inviato, Chiudi approvazione, collaudo effettivo, lettere | sì | sì |\n| Rigenera .docx, Genera mail `.msg`, Mail definitiva | sì | sì (il `.msg` del browser porta la firma del template) |\n| PDF, convocazioni, Carica fonti | sì | no: il PDF lo produce Word dal sync della versione Python |\n| Azioni, Sync, Log azioni, Riavvia backend, ricerca Ctrl+K, Apri in Outlook/Apri cartella | sì | no |\n| Requisiti | Python 3.12, Outlook/Word/pandoc per le azioni | Edge o Chrome (103 o successivi per Word e mail) |\n\nNella versione Web ogni scrittura passa dalle stesse regole del codice Python (chiavi cambiate, sezioni cambiate, scadenze a +5 giorni lavorativi, ✅/❌ nella scheda), verificate dagli stessi dati di riferimento.\n";
+LV.manuale = "# Manuale di LeviathADM\n\nLeviathADM è il cruscotto del Piano Operativo (PO): legge e scrive direttamente i file markdown del vault Obsidian (\"PO 2026/\", \"Anagrafica/\") e non ha un database. Esiste in due versioni con le stesse regole:\n\n| Versione | Come si avvia | Quando usarla |\n|---|---|---|\n| **Python** (dashboard locale) | `leviathadm.cmd` nella radice del vault, poi `http://127.0.0.1:8080` | PC con Python: tutte le funzioni, comprese le azioni che lanciano gli script (convocazioni, sync, Word, Outlook) |\n| **Web** (`leviathadm.html`) | doppio clic sul file in Edge o Chrome, poi \"Apri cartella\" | PC senza Python: lettura e scrittura del vault nel browser, nessuna installazione |\n\nQuesto manuale è lo stesso nelle due versioni: le differenze sono indicate dove servono e riassunte in fondo.\n\n**Regola che vale sempre:** l'applicazione **non invia mai una mail**. Produce solo bozze (`.msg` per i resoconti, `.eml` per le convocazioni) che si aprono in Outlook e si inviano a mano.\n\n---\n\n## Avvio\n\n**Versione Python.** `leviathadm.cmd` crea l'ambiente virtuale `.venv/` al primo avvio, installa i requisiti, verifica pacchetti, Outlook, Word, pandoc, ruolo del PC e porta, poi apre il server su `http://127.0.0.1:8080`. Opzioni: `--check` (solo verifiche), `--porta N` (altra porta). L'app va avviata da una console propria e fermata con Ctrl+C. Nel pack demo `leviathadm.cmd` usa il Python embedded della cartella `python/`.\n\n**Versione Web.** Aprire `leviathadm.html`, premere **Apri cartella…** e scegliere la cartella del vault (quella che contiene `PO 2026/` e `Anagrafica/`). Il browser chiede il permesso a ogni apertura e non memorizza nulla della cartella scelta. Serve Edge o Chrome (File System Access); se una policy aziendale blocca l'accesso ai file compare un avviso nella schermata iniziale. Il pulsante **⟳** nell'header rilegge tutti i file dal disco. Dal 1.5.0 la web ricorda l'ultima cartella aperta da quella copia dell'app (handle in IndexedDB, chiave = percorso del file): alla prossima apertura basta «Riapri», il browser richiede solo il permesso; «dimentica» cancella il ricordo (consigliato su PC condivisi: altri file HTML aperti nello stesso browser potrebbero leggere l'handle, ma per usarlo dovrebbero ottenere di nuovo il permesso da te).\n\n**Header e menu.** Il menu laterale (☰) elenca le viste; il selettore del **piano** (anno) nell'header sceglie la cartella `PO <anno>/` quando il vault ne contiene più di una; **◐** cambia tema chiaro/scuro. Nella versione Python c'è anche la **ricerca globale** (Ctrl+K) su codici, titoli e testi delle note.\n\n---\n\n## Rilasci\n\nLa vista iniziale elenca i punti di piano del piano selezionato: codice, descrizione, stato, PM, RA, RP, collaudo previsto / effettivo, rilascio previsto / effettivo. Le intestazioni ordinano la tabella (per data dove la colonna è una data); i filtri in alto restringono per stato o testo.\n\nGli **stati** del ciclo di vita, in ordine: Da Avviare, Bozza, Startup, Analisi, In corso, In Verifica, Collaudo, Concluso. Lo stato aggiuntivo **Rinominato** segnala una scheda storica rinumerata o confluita in un altro codice (campo `codice_rilascio_successivo`).\n\n### Dettaglio del rilascio\n\nUn clic sulla riga apre la scheda `ADMxxx-xx-xX.md`:\n\n- **Metadati e team**: codici e descrizioni di progetto, sottoprogetto e rilascio; PM, RA, RP, referente business e struttura, referente SOGEI; vincoli normativi; date; protocolli.\n- **Ciclo di vita**: lo stepper delle riunioni (Startup → Prima Analisi → SAL → Collaudo) con, per ogni fase, il resoconto collegato. Lo step **+** crea un nuovo resoconto (vedi \"Resoconti\").\n- **Riunioni, Azioni aperte, Decisioni chiave, Prossima riunione**: le sezioni della scheda. Le azioni con una scadenza (`— scadenza: GG/MM/AAAA`) compaiono anche in Scadenze.\n- **Allegati protocolli**: la tabella dei documenti protocollati (analisi, approvazione, disponibilità a collaudo, collaudo, estensione).\n- **Modifica scheda**: modulo con i campi del frontmatter (anagrafica, team, date e i cinque **protocolli**: analisi, approvazione analisi, disponibilità a collaudo, collaudo, estensione esercizio — numero e data del protocollo ADM, `DA COMPLETARE` finché manca il numero; il riferimento SOGEI non è un protocollo ADM). Si salvano **solo le chiavi cambiate**; le date si normalizzano in ISO; `DA COMPLETARE` è ammesso dove un dato non è ancora noto. La tabella \"Allegati protocolli\" si compila in Obsidian.\n- **Carica fonti** (entrambe le versioni): trascritti, CSV presenze e PDF di una riunione in `_fonti/` (vedi \"Carica fonti\" sotto Resoconti).\n- **Convoca startup / Convoca collaudo** (entrambe le versioni): bozza `.eml` con invito calendario (vedi \"Convocazioni\" sotto Resoconti).\n- **Lettere di fine collaudo** (entrambe le versioni): i `.docx` di Trasmissione copia verbale e Richiesta estensione in esercizio compilati dai template (vedi \"Lettere di fine collaudo\" sotto Resoconti).\n- **Azioni** (solo Python): Convocazione startup, Convocazione collaudo, Genera mail resoconto, Prepara cartella firma. Lanciano gli script del vault in un sottoprocesso; l'output compare nel pannello.\n\n### Stato del rilascio\n\nLo stato non va più tenuto a mano: ogni volta che l'app scrive una milestone nella scheda (riga Riunioni di un nuovo resoconto, trascritto caricato, ✅ di invio, data di collaudo effettiva, lettere in firma o protocollate, protocolli salvati da Modifica scheda) lo stato **avanza da solo** allo stato suggerito dai fatti registrati, sempre e solo in avanti: Da Avviare → Bozza → Startup → Analisi → In corso → In Verifica → Collaudo → Concluso. La regola è in `SCHEMA.md` (\"Avanzamento automatico dello stato\"); il sync del master e il daily check la applicano in blocco a tutte le schede, così valgono anche le modifiche fatte in Obsidian.\n\nNel dettaglio rilascio, accanto allo stato, compare `→ <suggerito>` e il pulsante **Avanza stato** quando il suggerito supera lo stato scritto. Per bloccare l'automatismo su una scheda, in Modifica scheda spunta **Stato manuale**: resta il solo badge. Uno stato scelto a mano in Modifica scheda non viene riavanzato in quello stesso salvataggio; `Rinominato` non si tocca mai.\n\n### Nuovo punto di piano\n\nDal menu **Nuovo punto di piano**: codice rilascio, sottoprogetto, descrizioni, ruoli, date. Crea la cartella `PO <anno>/<codice>/` e la scheda nello stesso formato di quelle generate dall'Excel PO. Il codice deve avere la forma `ADMxxx-xx-xX` e non esistere già. I campi persona suggeriscono i nomi dell'Anagrafica e con l'icona a destra creano al volo una nuova persona.\n\n---\n\n## Resoconti\n\nOgni riunione produce un resoconto `ADMxxx-xx-xX - AAAAMMGG Resoconto <Tipo>.md` nella cartella del rilascio (la **bozza**); dopo l'invio i file passano in `inviati/`.\n\n### Nuovo resoconto\n\nDallo step **+** del ciclo di vita (o dal pulsante \"Nuovo resoconto\" nella versione Python): si sceglie la fase (uguale o successiva all'ultima già fatta, o un testo libero) e la data. Viene generato lo **scheletro** con le sezioni fisse già compilate dalla scheda e dall'Anagrafica: tabelle RIUNIONE / RESOCONTO / OBIETTIVO, LISTA PARTECIPANTI, formula dell'OBIETTIVO DELLA RIUNIONE; nella scheda viene aggiunta la riga in `## Riunioni` con ❌ (non inviato). Restano da scrivere **ARGOMENTI TRATTATI** e **AZIONI CONCORDATE** (per il collaudo: ESITO, con i casi di test presi dal Verbale).\n\nSe nella cartella del rilascio c'è il **CSV presenze di Teams** con la data della riunione (caricato con \"Carica fonti\"), la LISTA PARTECIPANTI nasce dai presenti veri (ruoli PM/RA/RP/RB riconosciuti dal team della scheda, referente SOGEI per primo) e i presenti nuovi ricevono una scheda in Anagrafica; altrimenti dal team della scheda, con la nota \"[lista incompleta — integrare con report presenze Teams]\". Nell'editor il pulsante **Importa CSV presenze** sostituisce le liste ADM e SOGEI con quelle del CSV della data del resoconto.\n\n### Carica fonti\n\nDal dettaglio del rilascio (o dal modulo Nuova riunione, \"Carica fonti prima\"): data, fase e uno o più file — trascritti `.docx`/`.md`/`.vtt`, il CSV presenze scaricato da Teams (col suo nome originale: contiene la data), PDF. I file vanno in `_fonti/AAAAMMGG <Fase>/` del rilascio; i `.docx` e i `.vtt` vengono convertiti in `.md` (nella versione Python con pandoc, nella Web con il lettore Word dell'app: stesso testo, senza pandoc); il CSV aggiorna l'Anagrafica (schede nuove, email mancanti); il primo trascritto entra nella riga `## Riunioni` se la colonna è vuota. Per ogni file compare l'esito: salvato, identico (già presente uguale), conflitto (esiste con contenuto diverso: \"Sovrascrivi\" per forzare), rifiutato (estensione non ammessa o oltre 200 MB). Se il resoconto di quella riunione esiste già in bozza, un link apre l'editor con le presenze importate (da salvare).\n\n### Editor a sezioni\n\nIl resoconto si modifica sezione per sezione: partecipanti (selettore con i nomi dell'Anagrafica), argomenti, azioni (una per riga, con responsabile e data), esito del collaudo. Si riscrivono **solo le sezioni cambiate**; `data_riunione`, `approvato_da` e `data_approvazione` restano allineati tra frontmatter e tabelle. Sotto lo stepper del ciclo di vita compare il resoconto della fase scelta: editor inline se è una bozza, sola lettura con il lucchetto se è già inviato.\n\n### Dal markdown al Word\n\n- **Rigenera .docx** produce il documento Word ufficiale dal `.md` con il template giusto (startup/analisi/SAL, collaudo con firme o con approvazione telematica) e imposta DATA COMPILAZIONE a oggi, nel `.md` e nel Word. Il `.msg` precedente, ormai superato, viene eliminato. Funziona in entrambe le versioni: nel browser il Word nasce dallo stesso template, letto dalla cartella `Template/` del vault, e viene scritto accanto al `.md`.\n- **Genera mail** crea la bozza `.msg` con il Word allegato: oggetto, testo dal template di mail (variante telematica per i collaudi con approvazione telematica), destinatari dai partecipanti del resoconto e dal team della scheda (email dall'Anagrafica; chi non ha l'email viene elencato, da aggiungere a mano in Outlook). Nella finestra scegli i PDF della cartella del rilascio da allegare (per il collaudo telematico il documento di analisi con i suoi allegati). Nella versione Python la bozza la compone Outlook stesso, con la firma istituzionale; nel browser il `.msg` è scritto dall'app e porta la firma testuale del template: per quella di Outlook usa Inserisci → Firma prima di inviare. Il `.msg` si apre con doppio clic (versione Python: pulsanti **Apri in Outlook** e **Apri cartella**; Web: **Copia percorso** nell'esito).\n- Se modifichi il `.md` dopo aver generato Word e mail, Bozze da inviare segnala ⚠️ \"docx superato\": rigenera il Word e poi la mail. Anche il sync (versione Python) rigenera i Word superati.\n\n### Invio e approvazione tacita\n\n1. Quando la mail è stata inviata davvero, **Segna inviato** (vista \"Bozze da inviare\"): i file passano in `inviati/`, `inviato: true`, `data_scadenza_approvazione` = +5 giorni lavorativi, ✅ nella scheda.\n2. Alla scadenza senza osservazioni il resoconto è approvato tacitamente: **Chiudi approvazione** registra `data_approvazione`; PDF e mail definitiva li completa il sync del master.\n3. **Mail definitiva** (quando il PDF esiste): bozza `.msg` con il template \"versione definitiva\" e il PDF allegato; poi **Segna definitivo inviato** chiude il ciclo (`definitivo_inviato: true`).\n\n### Riporta in bozza\n\nPer rettificare un resoconto già inviato: **Riporta in bozza** riporta `.md` e `.docx` nella cartella del rilascio, elimina il `.msg` obsoleto, azzera `inviato` e la scadenza, rimette ❌ nella scheda. Si corregge, si rigenera il `.docx` e al prossimo invio si segna di nuovo inviato.\n\n### Convocazioni\n\n**Convoca startup** e **Convoca collaudo** (dal dettaglio rilascio; nella versione Python nella card Azioni) producono `ADMxxx-xx-xX - AAAAMMGG Convocazione Startup.eml` / `… Convocazione Collaudo.eml` nella cartella del rilascio: la `.eml` **è essa stessa l'invito** (invito calendario incorporato), basta aprirla in Outlook e premere Invia. Destinatari dai ruoli della scheda (A = RA, in copia RP, RB e SOGEI; per la startup anche il referente SOGEI del frontmatter); chi non ha l'email in Anagrafica è segnalato nell'esito e va aggiunto in Outlook. Data proposta: startup 7 giorni lavorativi dopo oggi; collaudo dalla disponibilità a collaudo + 20 giorni, 15 (o 10) giorni prima, mai nel weekend (campo vuoto con avviso se la disponibilità è `DA COMPLETARE`). Ora `HH:MM`, mai tra le 12:30 e le 14:00; conferma se la data cade di sabato o domenica. Startup: fino a tre date alternative nel corpo. Collaudo: PDF del piano di test (fra quelli del rilascio e di `_fonti/`), documento di analisi e casi di test, precompilati dal `… Piano di Test.md` del rilascio se c'è; crea anche il **Verbale di Collaudo** (mai sovrascritto). Il mittente (organizzatore dell'invito) è il PM della dashboard `PO 2026.md`, modificabile nella finestra.\n\n**Cambio di data del collaudo:** una nuova convocazione con un'altra data elimina la bozza `.eml` precedente non ancora segnata inviata e rinomina il Verbale alla nuova data conservando le spunte (anche quelle fatte in Obsidian), purché il collaudo non risulti già svolto (esito complessivo compilato, data del Verbale già passata o `data_collaudo_effettiva` nella scheda): in quel caso il vecchio Verbale resta e se ne crea uno nuovo.\n\n### Verbale di Collaudo\n\nLa convocazione del collaudo crea `ADMxxx-xx-xX - AAAAMMGG Verbale di Collaudo.md` con l'elenco delle verifiche. L'editor del Verbale (dal dettaglio rilascio) permette di segnare ogni verifica come superata o non superata, con data, tester e note, e l'esito complessivo (positivo, con riserva, negativo): riepilogo e dettaglio restano allineati. Il resoconto di collaudo prende da qui i casi di test e l'esito.\n\n### Lettere di fine collaudo\n\nDal dettaglio del rilascio (nella versione Python nella card Azioni), **Lettere di fine collaudo** compila i template Word `Template - ADMXXX-XX-XX Trasmissione copia verbale di collaudo.docx` e `… Richiesta estensione in esercizio.docx` e scrive i `.docx` nella cartella del rilascio (`ADMxxx-xx-xX Trasmissione copia verbale di collaudo.docx`, `ADMxxx-xx-xX - Richiesta estensione in esercizio.docx`), gli stessi nomi che Da firmare cerca. La finestra propone, modificabili: la tabella del Piano Operativo dalla scheda; i rappresentanti ADM e SOGEI dal resoconto di collaudo (altrimenti dal CSV presenze del collaudo, altrimenti dal team della scheda), un nome per riga in forma Cognome Nome (i cognomi composti con particella — De Luca, Lo Presti, Della Valle — vengono riconosciuti; per gli altri scrivi `Cognome | Nome`); l'esito dal Verbale (POSITIVO · con riserva · NEGATIVO: con NEGATIVO la Richiesta estensione parte deselezionata); per la Richiesta estensione la Direzione e l'Ufficio del referente business, ricavati dall'Anagrafica (Direzione dal nodo Strutture, Ufficio come \"Ufficio\" + denominazione dell'organigramma in iniziali maiuscole) e l'Area di Staff. **Rileggi sempre l'intestazione in Word prima della firma**: la denominazione dell'ufficio è una convenzione, non un dato. Solo i segnaposto vengono sostituiti: tab, rientri e firma del Dirigente restano quelli del template; la riga `Prot.:` la compila la protocollazione.\n\nUna lettera già presente non viene toccata (\"esistente, non sovrascritta\"); con **Sovrascrivi** viene riscritta e la cartella `da mandare in firma/<Lettera>/` viene svuotata, così il sync del PC master rifà i PDF dalla lettera nuova (li rifà solo se la cartella è vuota). I PDF per Arcipelago e la cartella restano al sync del master (Word). Ciclone `data_collaudo_effettiva` le lettere si creano comunque, ma compaiono in Da firmare solo quando il collaudo è registrato come svolto.\n\n---\n\n## Cruscotto\n\nCinque viste, le stesse delle pagine generate in Obsidian, calcolate al volo dai file del vault.\n\n### Scadenze\n\nQuattro sezioni: **Tassative** (convocazione del collaudo entro 20 giorni dalla disponibilità a collaudo: obbligo normativo, con nota \"provvisoria\" finché il protocollo ADM non è noto), **Scadute**, **Questa settimana**, **Prossime**. Vi compaiono le milestone delle schede (fine analisi, collaudo previsto, rilascio previsto), le azioni aperte con data e le scadenze di approvazione tacita dei resoconti inviati.\n\n### Bozze da inviare\n\n- **Approvazioni tacite scadute**: resoconti inviati oltre la scadenza senza approvazione → Chiudi approvazione.\n- **Bozze iniziali**: resoconti pronti nella cartella del rilascio, con lo stato di `.docx` e `.msg` → Segna inviato (chiede conferma se manca il `.msg` e ricorda la scadenza +5 giorni lavorativi).\n- **Convocazioni da inviare**: le `.eml` di startup e collaudo → Segna inviata (sposta in `inviati/`).\n- **Definitivi**: resoconti approvati di cui manca l'invio della versione definitiva → Segna definitivo inviato.\n\nUn resoconto di collaudo precompilato prima della riunione **non** compare tra le bozze finché la scheda non ha `data_collaudo_effettiva` (vedi \"Da collaudare\").\n\n### Da collaudare\n\nPunti di piano con disponibilità a collaudo ricevuta e collaudo non ancora svolto. Il campo **Data collaudo effettiva** registra la riunione avvenuta (mai una data futura; conferma richiesta se cade di sabato o domenica) e fa rientrare il resoconto di collaudo nel flusso delle bozze.\n\n### Da firmare\n\nLettere di fine collaudo (Trasmissione copia verbale · Richiesta estensione in esercizio) presenti nella cartella del rilascio: **da mandare in firma** e **in attesa di protocollazione**. I pulsanti registrano i passaggi (`in_firma`, `protocollata`); nella versione Python \"Prepara cartella firma\" produce la cartella con i PDF (il sync del master lo fa da solo); nella Web i `.docx` delle lettere si creano con \"Lettere di fine collaudo\" nel dettaglio rilascio.\n\n### Stato invii\n\nMatrice punti di piano × fase: per ogni resoconto **P** = provvisorio inviato, **D** = definitivo inviato, con il link al file. Sola lettura: gli stati si cambiano da \"Bozze da inviare\".\n\n---\n\n## Anagrafica\n\nElenco delle persone del vault (`Anagrafica/<Cognome Nome>.md`) con filtro per nome, organizzazione, direzione e ufficio. **Nuova persona** crea la scheda con organizzazione, direzione, ufficio, email e ruolo tipico; la stessa cosa si può fare al volo dai campi persona di Modifica scheda, Nuovo punto di piano e del selettore dei partecipanti. I nodi delle strutture (direzioni, uffici) stanno in `Anagrafica/Strutture/`.\n\n---\n\n## Azioni e Sync (versione Python)\n\nLa pagina **Azioni** raccoglie le operazioni che lanciano gli script del vault: daily check, rigenerazione delle pagine, schede dall'Excel PO, strutture, refresh Anagrafica, audit degli invii, organizzazione delle cartelle Outlook. Ogni pulsante è disabilitato, con il motivo, quando manca un prerequisito (Outlook, Word, pandoc) o quando l'azione è riservata al PC **master**.\n\nIl pulsante **Sync** esegue `scripts/sync.py`: allinea il vault con git, genera i `.msg` mancanti, ricostruisce la cartella locale `Bozze da inviare/`, archivia gli inviati e, sul master, chiude le approvazioni tacite e rigenera i `.docx` superati. **Durante un'azione ogni scrittura dell'app è sospesa** (banner in alto), così nessun file si sposta mentre git lavora. **Log azioni** mostra la cronologia delle esecuzioni.\n\n**Vault senza git.** La versione web e il pack dimostrativo sono strumenti autonomi sul PC di utilizzo: non scrivono mai su git. Se il vault non è un repository git, il sync salta pull e push e fa solo il ricalcolo locale (pagine, Bozze da inviare, archiviazione, `.msg` mancanti con Outlook, PDF con Word).\n\n**Ruoli dei PC.** `scripts/machines.json` assegna a ogni hostname il ruolo master o slave: il master è l'unico che esegue l'automazione mutante; gli slave leggono, scrivono e sincronizzano. **Riavvia backend** (nel menu) riavvia il server in una nuova console.\n\n---\n\n## Regole comuni e casi particolari\n\n- **Conflitti di modifica.** Prima di scrivere, l'app verifica che il file non sia cambiato sul disco da quando lo ha letto (nella versione Web: data di modifica e contenuto). In caso di conflitto compare **Ricarica**: il file viene riletto senza svuotare il modulo, poi si risalva.\n- **Fine settimana.** I campi data delle riunioni chiedono conferma se la data cade di sabato o domenica; \"Cambia data\" svuota il campo.\n- **Pausa pranzo.** Le convocazioni non possono iniziare tra le 12:30 e le 14:00.\n- **Formato dei file.** I file esistenti conservano i fine riga (CRLF) e l'eventuale BOM; i file nuovi sono in UTF-8 con LF. Il frontmatter si aggiorna chiave per chiave, senza riscrivere il resto.\n- **Pagine generate.** Rilasci, Riunioni, Bozze da inviare, Stato invii, Scadenze, Da collaudare e Da firmare in `PO <anno>/` sono prodotte dagli script: le viste dell'app mostrano gli stessi dati, non vanno editate a mano.\n- **Contratto dei dati.** Campi, formati e chi legge/scrive ogni sezione sono descritti in `SCHEMA.md`.\n\n---\n\n## Versione Web: differenze\n\n| Funzione | Python | Web |\n|---|---|---|\n| Lettura di rilasci, resoconti, note, Anagrafica | sì | sì |\n| Modifica scheda, Nuovo punto di piano, Nuova persona | sì | sì |\n| Nuovo resoconto, editor a sezioni, Verbale, Riporta in bozza, partecipanti dal CSV presenze | sì | sì |\n| Carica fonti (trascritti → `.md`, CSV presenze → Anagrafica, riga Riunioni), protocolli in Modifica scheda | sì | sì (i `.docx` convertiti dall'app, senza pandoc) |\n| Cruscotto con Segna inviato, Chiudi approvazione, collaudo effettivo, lettere | sì | sì |\n| Rigenera .docx, Genera mail `.msg`, Mail definitiva | sì | sì (il `.msg` del browser porta la firma del template) |\n| Convocazioni startup e collaudo (`.eml` con invito, PDF del piano di test, Verbale) | sì | sì (organizzatore dalla dashboard; al cambio di data bozza precedente eliminata e Verbale rinominato) |\n| Lettere di fine collaudo (`.docx` dai template, dati dalla scheda/resoconto/Verbale/Anagrafica) | sì | sì |\n| PDF e cartella `da mandare in firma/` | sì (Word) | no: li produce il sync del PC master |\n| Azioni, Sync, Log azioni, Riavvia backend, ricerca Ctrl+K, Apri in Outlook/Apri cartella | sì | no |\n| Requisiti | Python 3.12, Outlook/Word/pandoc per le azioni | Edge o Chrome (103 o successivi per Word e mail) |\n\nNella versione Web ogni scrittura passa dalle stesse regole del codice Python (chiavi cambiate, sezioni cambiate, scadenze a +5 giorni lavorativi, ✅/❌ nella scheda), verificate dagli stessi dati di riferimento.\n";
 
 </script>
 </body>

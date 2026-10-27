@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from fill_template import set_data_approvazione
 from mail_utils import (
     format_tipo_riunione,
+    salta_definitivo,
     parse_frontmatter,
     resolve_recipients,
     save_msg,
@@ -71,7 +72,7 @@ def find_pending() -> list[Path]:
         fm = parse_frontmatter(md_path)
         if fm.get("inviato", "").lower() != "true":
             continue
-        if fm.get("salta_definitivo", "").lower() == "true":
+        if salta_definitivo(fm):
             continue
         scadenza_str = fm.get("data_scadenza_approvazione", "").strip()
         data_appr = fm.get("data_approvazione", "").strip()
@@ -176,7 +177,7 @@ def find_approved_not_sent() -> list[Path]:
             continue
         if fm.get("definitivo_inviato", "").lower() == "true":
             continue
-        if fm.get("salta_definitivo", "").lower() == "true":
+        if salta_definitivo(fm):
             continue
         results.append(md_path)
     return results

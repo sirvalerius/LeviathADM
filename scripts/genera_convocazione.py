@@ -54,6 +54,7 @@ from mail_utils import (  # noqa: E402
     plain_to_html,
     read_release,
     team_from_release,
+    update_frontmatter_keys,
 )
 
 VAULT = Path(__file__).parent.parent
@@ -101,6 +102,65 @@ def _parse_date(raw: str) -> date | None:
         except ValueError:
             pass
     return None
+
+
+def organizer_default() -> str:
+    """Mittente e ORGANIZER dell'invito: l'email del `pm` della dashboard `PO 2026.md` (come la versione web).
+    ValueError se la dashboard o l'email in Anagrafica mancano: si passa organizer=... esplicito."""
+    dash = VAULT / "PO 2026.md"
+    pm = parse_frontmatter(dash).get("pm", "").strip() if dash.exists() else ""
+    em = get_email(pm) if pm else ""
+    if not em or "[" in em:
+        raise ValueError("organizzatore non risolvibile: manca `pm` in PO 2026.md o la sua email in Anagrafica — indica l'organizzatore")
+    return em
+
+
+def _data_nel_nome(p: Path, codice: str) -> date | None:
+    m = re.search(r"(\d{4})(\d{2})(\d{2})", p.name[len(codice):])
+    try:
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+    except ValueError:
+        return None
+
+
+def riallinea_cambio_data(out_dir: Path, codice: str, fm: dict, data: date, oggi: date | None = None) -> dict:
+    """Cambio di data del collaudo (regola della web 1.2.0): la bozza `<codice> - <AAAAMMGG> Convocazione Collaudo.eml`
+    con un'altra data ancora nella root viene eliminata e il Verbale con un'altra data viene rinominato alla nuova
+    (data_collaudo, aggiornato, riga "Data collaudo" dell'intestazione; esiti spuntati conservati) — salvo collaudo
+    già svolto: esito_collaudo compilato, data precedente a oggi, o data_collaudo_effettiva nella scheda.
+    Ritorna {"bozza_eliminata": nome | None, "verbale_rinominato": nome | None}."""
+    oggi = oggi or date.today()
+    effettiva = _parse_date(fm.get("data_collaudo_effettiva", ""))
+    svolto = lambda d: effettiva is not None or (d is not None and d < oggi)   # noqa: E731
+    out = {"bozza_eliminata": None, "verbale_rinominato": None}
+    nuovo_eml = f"{codice} - {data:%Y%m%d} Convocazione Collaudo.eml"
+    for p in sorted(out_dir.glob(f"{codice} - ???????? Convocazione Collaudo.eml")):
+        d = _data_nel_nome(p, codice)
+        if p.name == nuovo_eml or d is None or svolto(d):
+            continue
+        p.unlink()
+        out["bozza_eliminata"] = p.name
+    nuovo_v = out_dir / f"{codice} - {data:%Y%m%d} Verbale di Collaudo.md"
+    if nuovo_v.exists():
+        return out
+    candidati = []
+    for p in sorted(out_dir.glob(f"{codice} - ???????? Verbale di Collaudo.md")):
+        vfm = parse_frontmatter(p)
+        if (vfm.get("esito_collaudo", "") or "").strip():
+            continue
+        d = _parse_date(vfm.get("data_collaudo", "")) or _data_nel_nome(p, codice)
+        if d is None or svolto(d):
+            continue
+        candidati.append(p)
+    if candidati:
+        vecchio = candidati[-1]
+        testo = vecchio.read_text(encoding="utf-8")
+        testo = re.sub(r"^(> Documento di analisi: .*Data collaudo: \*\*)\d{2}/\d{2}/\d{4}(\*\*)", lambda m: f"{m.group(1)}{data:%d/%m/%Y}{m.group(2)}", testo, flags=re.M)
+        nuovo_v.write_text(testo, encoding="utf-8")
+        update_frontmatter_keys(nuovo_v, {"data_collaudo": data.isoformat(), "aggiornato": oggi.isoformat()})
+        vecchio.unlink()
+        out["verbale_rinominato"] = vecchio.name
+    return out
 
 
 def _fmt_giorno(d: date) -> str:
@@ -332,7 +392,7 @@ def genera_convocazione_collaudo(
     data: date | None = None,
     ora: str = "10:00",
     durata_min: int = 60,
-    organizer: str = "astolfo.lunardi@adm.gov.it",
+    organizer: str | None = None,
     out_dir: Path | None = None,
 ) -> dict:
     """Genera la convocazione collaudo: una .eml che è essa stessa l'invito
@@ -352,9 +412,11 @@ def genera_convocazione_collaudo(
                 "passa data=... o popola il frontmatter.")
         data = propose_collaudo_date(disp + timedelta(days=20), date.today())
 
+    organizer = organizer or organizer_default()
     to, cc = _recipients(codice)
     body = _build_body(codice, descrizione, data, ora, documento_analisi, verifiche)
     out_dir = out_dir or (VAULT / "PO 2026" / codice)
+    riallineo = riallinea_cambio_data(out_dir, codice, fm, data)
     stem = f"{codice} - {data:%Y%m%d} Convocazione Collaudo"
 
     # .eml = convocazione stessa (invito calendario incorporato) + PDF allegato
@@ -370,7 +432,7 @@ def genera_convocazione_collaudo(
     verbale_path = genera_pagina_collaudo(codice, verifiche, documento_analisi, data, out_dir)
 
     return {"eml": eml_path, "verbale": verbale_path,
-            "data": data, "to": to, "cc": cc}
+            "data": data, "to": to, "cc": cc, **riallineo}
 
 
 def _build_body_startup(codice: str, fm: dict, d: date, ora: str,
@@ -404,7 +466,7 @@ def genera_convocazione_startup(
     alternative: list[str] | None = None,
     ora: str = "10:00",
     durata_min: int = 30,
-    organizer: str = "astolfo.lunardi@adm.gov.it",
+    organizer: str | None = None,
     out_dir: Path | None = None,
 ) -> dict:
     """Genera la convocazione della riunione di startup come una .eml che è essa
@@ -414,6 +476,7 @@ def genera_convocazione_startup(
     formattate (testo) per il corpo. Destinatari dai ruoli della scheda.
     Ritorna {"eml": Path, "data": date, "to": str, "cc": [...]}"""
     _check_ora(ora)
+    organizer = organizer or organizer_default()
     fm, _ = read_release(codice)
     descrizione = fm.get("descrizione_rilascio", codice)
     to, cc = _recipients(codice)

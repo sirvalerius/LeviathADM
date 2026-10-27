@@ -1,10 +1,10 @@
 ---
-aggiornato: 2026-10-19
+aggiornato: 2026-10-27
 ---
 
 # Da firmare
 
-> Aggiornato: 19/10/2026 · 1 da mandare in firma · 0 in attesa di firma/protocollazione
+> Aggiornato: 27/10/2026 · 1 da mandare in firma · 0 in attesa di firma/protocollazione
 
 ---
 

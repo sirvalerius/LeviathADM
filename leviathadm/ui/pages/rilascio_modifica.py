@@ -71,6 +71,8 @@ def render_modifica(codice: str) -> None:
                 inputs['vincoli_normativi'] = ui.select(opzioni_con_corrente(['Sì', 'No'], vincoli_correnti),
                                                         value=vincoli_correnti, label='Vincoli normativi').classes('w-40')
                 campo('nota_variazione_date', 'Nota variazione date').classes('w-96')
+                inputs['stato_manuale'] = ui.checkbox("Stato manuale (blocca l'avanzamento automatico)",
+                                                      value=(fm.get('stato_manuale', '') or '').strip().lower() == 'true')
         with ui.card().classes('w-full lv-card shadow-none'):
             ui.label('Team').classes('font-bold text-slate-700')
             with ui.row().classes('w-full gap-4 flex-wrap'):
@@ -86,10 +88,13 @@ def render_modifica(codice: str) -> None:
                 for nome, label in CAMPI_DATE:
                     inputs[nome] = campo_data(f'{label} (AAAA-MM-GG)', value=fm.get(nome, ''), classes='w-48', props='')
 
-        iniziali = {k: (v.value.strip() if isinstance(v.value, str) else v.value) for k, v in inputs.items()}
+        def _val(v):   # checkbox → 'true'/'' nel frontmatter (stato_manuale), come SCHEMA.md
+            return v.strip() if isinstance(v, str) else ('true' if v is True else '' if v is False else v)
+
+        iniziali = {k: _val(v.value) for k, v in inputs.items()}
 
         def salva():
-            valori = {k: (v.value.strip() if isinstance(v.value, str) else v.value) for k, v in inputs.items()}
+            valori = {k: _val(v.value) for k, v in inputs.items()}
             err = valida_date_iso(valori)
             if err:
                 ui.notify(err, type='warning')
@@ -104,8 +109,12 @@ def render_modifica(codice: str) -> None:
                 ui.notify(str(e),
                           type='negative', close_button=True)
                 return
+            # stato scelto a mano in questo salvataggio: non lo si riavanza (lo farà il batch del master, salvo stato_manuale)
+            avanzato = None if 'stato' in modifiche else writers.avanza_stato_dopo(r.path)
             idx.reload([r.path])
             ui.notify(f'Scheda aggiornata ({", ".join(modifiche)}).', type='positive')
+            if avanzato:
+                ui.notify(f'Stato avanzato: {avanzato[0] or "(vuoto)"} → {avanzato[1]}', type='positive')
             vai(f'/rilascio/{codice}')
 
         with ui.row().classes('gap-3'):

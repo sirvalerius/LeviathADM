@@ -48,6 +48,10 @@ def _update_scheda_inviato(scheda: Path, stem: str) -> None:
     if new_text != text:
         scheda.write_text(new_text, encoding="utf-8")
         print(f"    Scheda aggiornata: {scheda.name}")
+        import avanza_stato
+        esito = avanza_stato.avanza_scheda(scheda)
+        if esito:
+            print(f"    Stato: {esito[0] or '(vuoto)'} → {esito[1]}")
 
 
 def _archivia_bozza(stem: str) -> bool:

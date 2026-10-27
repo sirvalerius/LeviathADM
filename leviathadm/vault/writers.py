@@ -58,6 +58,17 @@ def update_frontmatter(path: Path, updates: dict[str, str], expected_mtime_ns: i
     return path.stat().st_mtime_ns
 
 
+def avanza_stato_dopo(scheda: Path) -> tuple[str, str] | None:
+    """Avanzamento automatico dello stato dopo la scrittura di una milestone nella scheda
+    (avanza_stato.avanza_scheda: solo in avanti, mai Rinominato, mai con stato_manuale). Mai un errore:
+    la scrittura principale è già avvenuta e non va invalidata. Ritorna (da, a) o None."""
+    try:
+        import avanza_stato
+        return avanza_stato.avanza_scheda(Path(scheda))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def salva_sezioni(path: Path, bodies: dict[str, str], expected_mtime_ns: int) -> int:
     """Riscrive solo le sezioni elencate (body verbatim dopo la riga heading); heading assenti
     vengono aggiunti in coda, nell'ordine dato. Tutto il resto resta identico."""
@@ -98,7 +109,14 @@ def replace_section(path: Path, heading: str, new_body: str, expected_mtime_ns: 
 def aggiungi_riunione(scheda: Path, data_iso: str, fase_tab: str, trascritto: str, stem: str,
                       expected_mtime_ns: int) -> int:
     """Nuova riga in coda alla tabella ## Riunioni (4 o 5 colonne come l'intestazione; sostituisce
-    la riga segnaposto `| — | — | — | — |` delle schede appena generate)."""
+    la riga segnaposto `| — | — | — | — |` delle schede appena generate). Poi avanza lo stato."""
+    _aggiungi_riunione(scheda, data_iso, fase_tab, trascritto, stem, expected_mtime_ns)
+    avanza_stato_dopo(scheda)
+    return scheda.stat().st_mtime_ns
+
+
+def _aggiungi_riunione(scheda: Path, data_iso: str, fase_tab: str, trascritto: str, stem: str,
+                       expected_mtime_ns: int) -> int:
     _guardia(scheda, expected_mtime_ns)
     _, _, blocchi = _spezza_file(scheda.read_text(encoding="utf-8"))
     b = next((x for x in blocchi if x.heading == "Riunioni"), None)
@@ -136,7 +154,15 @@ def aggiungi_riunione(scheda: Path, data_iso: str, fase_tab: str, trascritto: st
 
 def completa_riga_riunione(scheda: Path, data_iso: str, fase_tab: str, trascritto: str, expected_mtime_ns: int) -> bool:
     """Scrive il nome del trascritto nella riga Riunioni (data, fase) se la colonna è vuota; se la riga manca la
-    aggiunge (resoconto "—"); se ha già un trascritto non tocca nulla (False). Tabelle a 4 colonne: solo aggiunta."""
+    aggiunge (resoconto "—"); se ha già un trascritto non tocca nulla (False). Tabelle a 4 colonne: solo aggiunta.
+    Se scrive, poi avanza lo stato."""
+    scritto = _completa_riga_riunione(scheda, data_iso, fase_tab, trascritto, expected_mtime_ns)
+    if scritto:
+        avanza_stato_dopo(scheda)
+    return scritto
+
+
+def _completa_riga_riunione(scheda: Path, data_iso: str, fase_tab: str, trascritto: str, expected_mtime_ns: int) -> bool:
     _guardia(scheda, expected_mtime_ns)
     _, _, blocchi = _spezza_file(scheda.read_text(encoding="utf-8"))
     b = next((x for x in blocchi if x.heading == "Riunioni"), None)
@@ -154,7 +180,7 @@ def completa_riga_riunione(scheda: Path, data_iso: str, fase_tab: str, trascritt
             righe[i] = "| " + " | ".join(celle) + " |"
             salva_sezioni(scheda, {"Riunioni": "\n".join(righe)}, expected_mtime_ns)
             return True
-    aggiungi_riunione(scheda, data_iso, fase_tab, trascritto, "—", expected_mtime_ns)
+    _aggiungi_riunione(scheda, data_iso, fase_tab, trascritto, "—", expected_mtime_ns)
     return True
 
 
@@ -276,13 +302,17 @@ def registra_collaudo(scheda: Path, data_iso: str, expected_mtime_ns: int, *, og
     d = date.fromisoformat(data_iso)              # ValueError se non ISO
     if d > (oggi or date.today()):
         raise ValueError(f"data futura: {data_iso}")
-    return update_frontmatter(scheda, {"data_collaudo_effettiva": d.isoformat()}, expected_mtime_ns)
+    update_frontmatter(scheda, {"data_collaudo_effettiva": d.isoformat()}, expected_mtime_ns)
+    avanza_stato_dopo(scheda)
+    return scheda.stat().st_mtime_ns
 
 
 def segna_lettera(scheda: Path, field_base: str, stato: str, expected_mtime_ns: int) -> int:
     if stato not in ("in_firma", "protocollata"):
         raise ValueError(f"stato lettera non valido: {stato}")
-    return update_frontmatter(scheda, {f"{field_base}_{stato}": "true"}, expected_mtime_ns)
+    update_frontmatter(scheda, {f"{field_base}_{stato}": "true"}, expected_mtime_ns)
+    avanza_stato_dopo(scheda)
+    return scheda.stat().st_mtime_ns
 
 
 def chiudi_approvazione_tacita(md_path: Path, expected_mtime_ns: int, *, oggi: date | None = None) -> int:
@@ -330,6 +360,13 @@ def crea_file(path: Path, text: str) -> int:
 
 
 def set_riunione_inviata(path: Path, resoconto_stem: str, inviata: bool, expected_mtime_ns: int) -> int:
+    """✅/❌ nella riga Riunioni del resoconto; se cambia qualcosa, poi avanza lo stato."""
+    if _set_riunione_inviata(path, resoconto_stem, inviata, expected_mtime_ns):
+        avanza_stato_dopo(path)
+    return path.stat().st_mtime_ns
+
+
+def _set_riunione_inviata(path: Path, resoconto_stem: str, inviata: bool, expected_mtime_ns: int) -> bool:
     _guardia(path, expected_mtime_ns)
     text = path.read_text(encoding="utf-8")
     da, a = ("❌", "✅") if inviata else ("✅", "❌")
@@ -337,7 +374,8 @@ def set_riunione_inviata(path: Path, resoconto_stem: str, inviata: bool, expecte
     nuovo = re.sub(pattern, rf"\1| {a} |", text)
     if nuovo != text:
         path.write_text(nuovo, encoding="utf-8")
-    return path.stat().st_mtime_ns
+        return True
+    return False
 
 
 def crea_rilascio(rel: dict, piano_root: Path) -> Path:

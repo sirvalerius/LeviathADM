@@ -20,6 +20,7 @@ LAVORI = VAULT / "PO 2026"
 OUT = LAVORI / "Scadenze.md"
 
 sys.path.insert(0, str(Path(__file__).parent))
+from mail_utils import salta_definitivo  # noqa: E402
 from mail_utils import parse_frontmatter  # noqa: E402
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -155,8 +156,8 @@ def collect(today: date) -> list[dict]:
         fm = parse_frontmatter(text)
         if not fm.get("tipo_riunione", "").strip():
             continue   # Verbale di Collaudo, Demo…: non sono resoconti
-        if fm.get("salta_definitivo", "").lower() == "true":
-            continue   # chiudi_approvazione non li chiuderà mai: nessuna scadenza da mostrare
+        if salta_definitivo(fm):
+            continue   # chiudi_approvazione non li chiuderà mai (flag o collaudo): nessuna scadenza da mostrare
         # Il timer di convalida tacita parte solo a invio confermato dall'utente
         if fm.get("inviato", "").lower() != "true":
             continue

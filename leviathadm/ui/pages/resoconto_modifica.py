@@ -10,7 +10,7 @@ from leviathadm.ui import state
 from leviathadm.ui.pages.resoconto import carica_doc
 from leviathadm.ui.shell import shell, vai
 from leviathadm.ui.widgets import (ListaRighe, TabellaPartecipanti, TextareaAnteprima, campo_data, campo_persona,
-                                   ruolo_da_anagrafica)
+                                   ruolo_da_anagrafica, ufficio_da_anagrafica)
 from leviathadm.vault import resoconti as R
 from leviathadm.vault import writers
 from mail_utils import team_from_release
@@ -142,7 +142,7 @@ def editor_resoconto(idx, nid: str, *, dopo_salva: Callable[[], None], annulla: 
                             if n is None:
                                 ui.notify('Scegli una persona dall\'Anagrafica.', type='warning')
                                 return
-                            tab.aggiungi(R.Partecipante(ruolo=ruolo_da_anagrafica(sigla.value or '', n.frontmatter),
+                            tab.aggiungi(R.Partecipante(ruolo=ruolo_da_anagrafica(sigla.value or '', n.frontmatter), ufficio=ufficio_da_anagrafica(n.frontmatter),
                                                         nome=n.titolo))
                         ui.button('Aggiungi da Anagrafica', icon='person_add', on_click=aggiungi).props('flat dense')
                     ui.label('SOGEI').classes('text-sm text-slate-600 mt-2')

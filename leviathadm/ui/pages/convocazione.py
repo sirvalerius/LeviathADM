@@ -74,15 +74,28 @@ def proponi_data_collaudo(r: Rilascio) -> str:
     return propose_collaudo_date(disp + timedelta(days=20), date.today()).isoformat()
 
 
+def organizzatore_default() -> str:
+    """Email del pm della dashboard (genera_convocazione.organizer_default); '' se non risolvibile."""
+    from genera_convocazione import organizer_default   # puro Python, nessun COM
+    try:
+        return organizer_default()
+    except ValueError:
+        return ''
+
+
 def dialogo_convocazione(idx, r: Rilascio, tipo: str, data_proposta: str) -> ui.dialog:
     az = A.CATALOGO['convocazione_startup' if tipo == 'startup' else 'convocazione_collaudo']
     pre = precompila_collaudo(r.path.parent) if tipo == 'collaudo' else {}
+    org_default = organizzatore_default()
     with ui.dialog() as d, ui.card().classes('w-[640px] max-w-full'):
         ui.label(az.titolo).classes('text-lg font-bold')
         with ui.row().classes('items-end gap-3'):
             data = campo_data('Data (AAAA-MM-GG)', value=data_proposta, classes='w-48', props='', conferma_weekend=True)
             ora = campo_ora('Ora', value='10:00', props='')
             durata = ui.number('Durata (min)', value=30 if tipo == 'startup' else 60, min=15, format='%.0f').classes('w-32')
+        organizzatore = ui.input('Organizzatore (mittente)', value=org_default).classes('w-full')
+        if not org_default:
+            ui.label('Organizzatore non risolvibile dal pm di PO 2026.md: indica l\'email a mano.').classes('text-xs text-amber-800')
         if tipo == 'collaudo' and not data_proposta:
             ui.label('Data non proponibile (data_disponibilita_collaudo assente o DA COMPLETARE): indicala a mano.') \
                 .classes('text-xs text-amber-800')
@@ -112,7 +125,10 @@ def dialogo_convocazione(idx, r: Rilascio, tipo: str, data_proposta: str) -> ui.
             if motivo:
                 ui.notify(motivo, type='warning')
                 return None
-            base = {'codice': r.codice, 'data': dt.isoformat(), 'ora': ora.value.strip(), 'durata': str(max(15, int(durata.value or 0)))}
+            if '@' not in (organizzatore.value or ''):
+                ui.notify('Organizzatore: serve un indirizzo email.', type='warning')
+                return None
+            base = {'codice': r.codice, 'data': dt.isoformat(), 'ora': ora.value.strip(), 'durata': str(max(15, int(durata.value or 0))), 'organizzatore': organizzatore.value.strip()}
             if tipo == 'startup':
                 alternative, errore = alternative_da_righe([(da.value, o.value) for da, o in righe_alt])
                 if errore:

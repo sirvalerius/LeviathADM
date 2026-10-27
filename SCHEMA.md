@@ -16,7 +16,8 @@ Il vault markdown **è** il database. Due consumatori: **LeviathADM** (lato uman
 | `codice_sottoprogetto` | `ADMxxx-xx` | |
 | `codice_progetto` | `ADMxxx` | |
 | `descrizione_progetto` / `descrizione_sottoprogetto` / `descrizione_rilascio` | testo | mai inventarle: fonte Excel PO |
-| `stato` | uno di: `Da Avviare`, `Bozza`, `Startup`, `In corso`, `Analisi`, `In Verifica`, `Collaudo`, `Concluso` | |
+| `stato` | uno di: `Da Avviare`, `Bozza`, `Startup`, `Analisi`, `In corso`, `In Verifica`, `Collaudo`, `Concluso` (in quest'ordine) | dal 2026-10-27 lo scrivono anche gli automatismi, solo in avanti (v. "Avanzamento automatico dello stato") |
+| `stato_manuale` | `true`/assente (vuoto = assente: le app lasciano la chiave vuota quando si toglie la spunta) | opzionale: blocca l'avanzamento automatico dello stato sulla scheda (lo stato suggerito resta solo mostrato) |
 | `pm`, `ra`, `rp` | `Nome Cognome` (rp può essere doppio: `X - Y`) | |
 | `struttura_business` | sigla direzione (es. `DGIO`) | |
 | `referente_business`, `referente_sogei` | `Nome Cognome` | referente_sogei sempre primo nella lista SOGEI dei resoconti |
@@ -27,6 +28,27 @@ Il vault markdown **è** il database. Due consumatori: **LeviathADM** (lato uman
 | `codice_rilascio_successivo` | `ADMxxx-xx-xX` | sulla scheda **vecchia** (stato `Rinominato`, anche nel senso di "confluenza"): punta al nuovo codice |
 | `nota_variazione_date` | testo libero, es. `30/11 → 31/08 (collaudo)` | opzionale: quando le date correnti (`data_collaudo_prevista`/`data_rilascio_prevista`) divergono dal PO originario, annotarlo qui — `build_rilasci.py` lo riporta verbatim in colonna "Var. date"; se vuoto la colonna resta vuota, nessun calcolo automatico (il dato originario non è altrimenti tracciato) |
 | `trasmissione_verbale_in_firma`, `trasmissione_verbale_protocollata`, `estensione_esercizio_in_firma`, `estensione_esercizio_protocollata` | `true`/assente | `build_da_firmare` (checkbox in `Da firmare.md`) — **mai a mano**. Tracciano il workflow Arcipelago a due step (vedi `Manuale protocollo/`) per le lettere di fine collaudo; indipendenti da `protocollo_collaudo`/`protocollo_estensione_esercizio`, che restano il numero di protocollo reale da popolare a parte quando arriva |
+
+### Avanzamento automatico dello stato (dal 2026-10-27)
+
+Regola unica in `scripts/avanza_stato.py` (`suggerisci`/`avanza`) e `leviathadm_web/src/26_stato.js` (`LV.stato`),
+verificata dal golden `stato`. Dai soli dati della scheda (frontmatter + righe `## Riunioni`: fase e ✅) si ricava
+lo **stato suggerito**; vince la condizione più alta:
+
+| Suggerito | Condizione (una basta) |
+|---|---|
+| Startup | riga Riunioni con fase che inizia per `Startup` |
+| Analisi | riga con fase che contiene `Analisi` |
+| In corso | riga con fase che inizia per `SAL`; o `protocollo_analisi` / `protocollo_approvazione_analisi` valorizzati |
+| In Verifica | `protocollo_disponibilita_collaudo` o `data_disponibilita_collaudo` valorizzati (anche `DA COMPLETARE`); o riga con fase `Collaudo…` |
+| Collaudo | `data_collaudo_effettiva` ISO non futura; o `protocollo_collaudo`; o riga `Collaudo…` con ✅; o `trasmissione_verbale_in_firma` / `trasmissione_verbale_protocollata` / `estensione_esercizio_in_firma` = true |
+| Concluso | `data_rilascio_effettiva` ISO non futura; o `protocollo_estensione_esercizio`; o `estensione_esercizio_protocollata` = true |
+
+Si scrive `stato` solo se il suggerito supera lo stato corrente (mai all'indietro; stato vuoto o sconosciuto =
+rango minimo); mai su `Rinominato`; mai con `stato_manuale: true`. Scatta subito dopo la scrittura di una
+milestone (riga Riunioni, trascritto, ✅ di invio, collaudo effettivo, flag delle lettere, Modifica scheda senza
+cambio manuale dello stato), in blocco al sync del master e al daily check (`avanza_stato.py`), e a richiesta col
+pulsante **Avanza stato** del dettaglio rilascio.
 
 ### Rinumerazione di un punto di piano (SOGEI/ADM cambia il codice)
 
@@ -69,7 +91,7 @@ Posizione: root del rilascio finché non inviato, poi `inviati/`.
 | `data_scadenza_approvazione` | ISO (+5gg lavorativi dall'invio) | `archivia_inviati` — **mai a mano** |
 | `data_approvazione` | ISO | `chiudi_approvazione` (o LeviathADM "Chiudi approvazione": solo questa chiave, PDF e `.msg` al sync del master) |
 | `definitivo_inviato` | `true`/assente | `archivia_inviati` |
-| `salta_definitivo` | `true`/assente | manuale — esclude il resoconto dalla generazione automatica del definitivo (`chiudi_approvazione`), es. per rilasci con `stato: Concluso` per cui non ha senso un ulteriore invio di validazione |
+| `salta_definitivo` | `true`/assente | manuale — esclude il resoconto dalla generazione automatica del definitivo (`chiudi_approvazione`), es. per rilasci con `stato: Concluso` per cui non ha senso un ulteriore invio di validazione. I resoconti di **collaudo** sono esclusi sempre, anche senza il flag (`mail_utils.salta_definitivo`, dal 2026-10-23) |
 
 Sezioni body: `OBIETTIVO`, `LISTA PARTECIPANTI`, `OBIETTIVO DELLA RIUNIONE`, `ARGOMENTI TRATTATI`, `AZIONI CONCORDATE` (o `ESITO` per il collaudo — è ciò da cui `rigenera_resoconto.py` riconosce il tipo).
 

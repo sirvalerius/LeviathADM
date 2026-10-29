@@ -98,7 +98,7 @@ Sezioni body: `OBIETTIVO`, `LISTA PARTECIPANTI`, `OBIETTIVO DELLA RIUNIONE`, `AR
 ## Proposta Copilot — `ADMxxx-xx-xX/_fonti/<AAAAMMGG Fase>/Proposta Copilot.md` (dal 2026-10-27, LeviathADM 2.0)
 
 Le sezioni "di giudizio" del resoconto (ARGOMENTI TRATTATI, AZIONI CONCORDATE) scritte da un agente Copilot 365 che legge
-il trascritto Teams sulla raccolta SharePoint del vault, oppure incollate dall'utente nel modulo Nuovo resoconto. Non è un
+il trascritto Teams sulla copia OneDrive del vault (`Desktop/PO VAULT`), oppure incollate dall'utente nel modulo Nuovo resoconto. Non è un
 trascritto: "Carica fonti" la salva senza convertirla né toccare la riga Riunioni. LeviathADM la importa nello scheletro
 ("Importa da Copilot", mai per il collaudo); il resoconto resta l'unico documento ufficiale. Parser: `scripts/proposta_copilot.py`
 e `LV.proposta` (golden `proposta_copilot`).

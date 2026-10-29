@@ -1,0 +1,94 @@
+---
+codice_rilascio: ADM902-02-0B
+tipo_riunione: SAL 1
+data_riunione: 2026-09-29
+data_compilazione: 2026-10-29
+compilato_da: Astolfo Lunardi
+approvato_da: Partecipanti
+data_approvazione: 2026-10-06
+inviato: true
+data_scadenza_approvazione: 2026-10-06
+definitivo_inviato: true
+---
+
+# ADM902-02-0B - RESOCONTO RIUNIONE DI STATO AVANZAMENTO LAVORI N.1 DEL 29/09/2026
+
+[[ADM902-02-0B]]
+
+---
+
+## RIUNIONE
+
+| | |
+|---|---|
+| **DATA** | 29/09/2026 |
+| **Canale** | MICROSOFT TEAMS |
+
+---
+
+## RESOCONTO
+
+| | |
+|---|---|
+| **COMPILATO DA** | Astolfo Lunardi |
+| **DATA COMPILAZIONE** | 29/10/2026 |
+| **Approvato da** | Partecipanti |
+| **Data approvazione** | |
+
+---
+
+## OBIETTIVO
+
+| | |
+|---|---|
+| **CODICE PROGETTO** | ADM902 |
+| **DESCRIZIONE PROGETTO** | DOGANE DEI CIELI |
+| **CODICE SOTTOPROGETTO** | ADM902-02 |
+| **DESCRIZIONE SOTTOPROGETTO** | Sportello Telematico Zeppelin |
+| **CODICE RILASCIO** | ADM902-02-0B |
+| **DESCRIZIONE RILASCIO** | Sportello telematico per le dichiarazioni doganali degli zeppelin |
+| **VINCOLI NORMATIVI** | NO |
+| **VARIAZIONE DATE PREVISTE** | NO |
+| **VARIAZIONE EFFORT** | NO |
+| **PRIVACY** | NO |
+
+---
+
+## LISTA PARTECIPANTI
+
+**ADM**
+
+| Ruolo | Ufficio | Nome |
+|-------|---------|------|
+| (PM) DTDR | ATTUAZIONE PROGETTI ONIRICI | Lunardi Astolfo |
+| (RA) DTDR | ANALISI E ARCHITETTURE AEROSTATICHE | Vaporetti Clelia |
+| (RP) DTDR | SVILUPPO SISTEMI DI NAVIGAZIONE | Sestante Ottavia |
+| (RB) DDOC | DIRIGIBILI E AEROSTATI | Ancora Teodorico |
+
+**SOGEI**
+
+| Nome |
+|------|
+| Eclisse Raimondo |
+
+---
+
+## OBIETTIVO DELLA RIUNIONE
+
+In data 29 settembre 2026 si è svolta la riunione di Stato Avanzamento Lavori n.1, tenutasi a distanza, tra ADM e Sogei per verificare l'avanzamento delle attività relative al rilascio "Sportello telematico per le dichiarazioni doganali degli zeppelin".
+
+---
+
+## ARGOMENTI TRATTATI
+
+SOGEI ha illustrato lo stato di avanzamento delle attività di sviluppo di "Sportello Telematico Zeppelin", confermando il rispetto della pianificazione concordata. ADM ha verificato le funzionalità già disponibili in ambiente di test e ha segnalato alcune osservazioni di dettaglio, prese in carico da SOGEI. È stata confermata la data prevista per la disponibilità al collaudo.
+
+---
+
+## AZIONI CONCORDATE
+
+- SOGEI — trasmettere la documentazione aggiornata di "Sportello Telematico Zeppelin" — entro il 13/10/2026
+
+---
+
+*Stato: BOZZA — non ancora inviato*

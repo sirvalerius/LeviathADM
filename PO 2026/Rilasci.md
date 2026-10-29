@@ -1,5 +1,5 @@
 ---
-aggiornato: 2026-10-27
+aggiornato: 2026-10-29
 ---
 
 # Rilasci PO 2026
@@ -12,15 +12,15 @@ Ordinati per data collaudo prevista. "Var. date" mostra `nota_variazione_date` s
 
 | Codice | Descrizione rilascio | Stato | Struttura | Collaudo prev. | Rilascio prev. | Fine analisi | Var. date | Collaudo eff. | Rilascio eff. |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [[ADM905-01-0A]] | Archivio digitale delle concessioni marittime e aerostatiche | Concluso | DDOC | 2026-08-28 | 2026-09-12 | 2026-06-29 |  | 2026-08-28 | 2026-09-12 |
-| [[ADM902-03-0C]] | Verifica automatica dell'integrità dei sigilli doganali sui dirigibili | Collaudo | DDOC | 2026-10-20 | 2026-11-16 | 2026-08-28 |  | 2026-10-20 |  |
-| [[ADM902-02-0B]] | Sportello telematico per le dichiarazioni doganali degli zeppelin | In Verifica | DDOC | 2026-11-06 | 2026-12-06 | 2026-09-17 |  |  |  |
-| [[ADM904-01-0A]] | Cruscotto di monitoraggio delle accise sulle caldaie a vapore | In corso | DACV | 2026-12-28 | 2027-01-25 | 2026-09-17 |  |  |  |
-| [[ADM904-02-0B]] | Monitoraggio delle scommesse sulle regate di dirigibili | In corso | DGLL | 2027-01-15 | 2027-02-14 |  |  |  |  |
-| [[ADM903-02-0B]] | Tracciabilità delle partite di tabacco provenienti da Atlantide | Analisi | DACV | 2027-01-25 | 2027-02-24 | 2026-11-26 |  |  |  |
-| [[ADM902-01-0A]] | Registro telematico dei dazi sui dirigibili in transito | Bozza | DDOC | 2027-02-04 | 2027-03-06 |  |  |  |  |
-| [[ADM903-01-0A]] | Anagrafe nazionale degli alchimisti autorizzati alla distillazione | Startup | DACV | 2027-02-15 | 2027-03-16 |  |  |  |  |
-| [[ADM901-01-0A]] | Portale per la vendita di biglietti delle lotterie lunari | Da Avviare | DGLL | 2027-02-24 | 2027-03-26 |  |  |  |  |
+| [[ADM905-01-0A]] | Archivio digitale delle concessioni marittime e aerostatiche | Concluso | DDOC | 2026-08-31 | 2026-09-14 | 2026-07-01 |  | 2026-08-31 | 2026-09-14 |
+| [[ADM902-03-0C]] | Verifica automatica dell'integrità dei sigilli doganali sui dirigibili | Collaudo | DDOC | 2026-10-22 | 2026-11-18 | 2026-08-30 |  | 2026-10-22 |  |
+| [[ADM902-02-0B]] | Sportello telematico per le dichiarazioni doganali degli zeppelin | In Verifica | DDOC | 2026-11-09 | 2026-12-08 | 2026-09-19 |  |  |  |
+| [[ADM904-01-0A]] | Cruscotto di monitoraggio delle accise sulle caldaie a vapore | In corso | DACV | 2026-12-28 | 2027-01-27 | 2026-09-19 |  |  |  |
+| [[ADM904-02-0B]] | Monitoraggio delle scommesse sulle regate di dirigibili | In corso | DGLL | 2027-01-18 | 2027-02-16 |  |  |  |  |
+| [[ADM903-02-0B]] | Tracciabilità delle partite di tabacco provenienti da Atlantide | Analisi | DACV | 2027-01-27 | 2027-02-26 | 2026-11-28 |  |  |  |
+| [[ADM902-01-0A]] | Registro telematico dei dazi sui dirigibili in transito | Bozza | DDOC | 2027-02-08 | 2027-03-08 |  |  |  |  |
+| [[ADM903-01-0A]] | Anagrafe nazionale degli alchimisti autorizzati alla distillazione | Startup | DACV | 2027-02-16 | 2027-03-18 |  |  |  |  |
+| [[ADM901-01-0A]] | Portale per la vendita di biglietti delle lotterie lunari | Da Avviare | DGLL | 2027-02-26 | 2027-03-28 |  |  |  |  |
 
 ## Storico (rinominati / confluiti)
 

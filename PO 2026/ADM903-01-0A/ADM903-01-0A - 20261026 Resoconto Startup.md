@@ -2,7 +2,7 @@
 codice_rilascio: ADM903-01-0A
 tipo_riunione: Startup
 data_riunione: 2026-10-26
-data_compilazione: 2026-10-27
+data_compilazione: 2026-10-29
 compilato_da: Astolfo Lunardi
 approvato_da: Partecipanti
 data_approvazione:
@@ -29,7 +29,7 @@ inviato: false
 | | |
 |---|---|
 | **COMPILATO DA** | Astolfo Lunardi |
-| **DATA COMPILAZIONE** | 27/10/2026 |
+| **DATA COMPILAZIONE** | 29/10/2026 |
 | **Approvato da** | Partecipanti |
 | **Data approvazione** | |
 
@@ -85,8 +85,8 @@ Nel corso della riunione ADM ha illustrato l'obiettivo del rilascio "Anagrafe Al
 
 ## AZIONI CONCORDATE
 
-- SOGEI — predisporre il documento di analisi — entro il 26/11/2026
-- RB — fornire l'elenco delle categorie di alchimisti — entro il 06/11/2026
+- SOGEI — predisporre il documento di analisi — entro il 28/11/2026
+- RB — fornire l'elenco delle categorie di alchimisti — entro il 08/11/2026
 
 ---
 

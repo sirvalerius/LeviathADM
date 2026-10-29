@@ -2,7 +2,7 @@
 codice_rilascio: ADM902-02-0B
 tipo_riunione: Prima Analisi
 data_riunione: 2026-09-14
-data_compilazione: 2026-10-27
+data_compilazione: 2026-10-29
 compilato_da: Astolfo Lunardi
 approvato_da: Partecipanti
 data_approvazione: 2026-09-21
@@ -31,7 +31,7 @@ definitivo_inviato: true
 | | |
 |---|---|
 | **COMPILATO DA** | Astolfo Lunardi |
-| **DATA COMPILAZIONE** | 27/10/2026 |
+| **DATA COMPILAZIONE** | 29/10/2026 |
 | **Approvato da** | Partecipanti |
 | **Data approvazione** | |
 

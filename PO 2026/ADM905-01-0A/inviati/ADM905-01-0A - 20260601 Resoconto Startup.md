@@ -2,7 +2,7 @@
 codice_rilascio: ADM905-01-0A
 tipo_riunione: Startup
 data_riunione: 2026-06-01
-data_compilazione: 2026-10-27
+data_compilazione: 2026-10-29
 compilato_da: Astolfo Lunardi
 approvato_da: Partecipanti
 data_approvazione: 2026-06-08
@@ -31,7 +31,7 @@ definitivo_inviato: true
 | | |
 |---|---|
 | **COMPILATO DA** | Astolfo Lunardi |
-| **DATA COMPILAZIONE** | 27/10/2026 |
+| **DATA COMPILAZIONE** | 29/10/2026 |
 | **Approvato da** | Partecipanti |
 | **Data approvazione** | |
 

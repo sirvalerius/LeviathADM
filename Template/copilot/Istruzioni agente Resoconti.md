@@ -1,8 +1,20 @@
 # Istruzioni per l'agente Copilot Studio "Resoconti PO 2026"
 
-Queste istruzioni vanno incollate nel campo "Istruzioni" dell'agente. Conoscenza da collegare: la raccolta
-SharePoint del vault (almeno le cartelle `PO 2026/` e `Anagrafica/`) e questa cartella `Template/copilot/`.
-Azione da collegare: "Crea file in SharePoint" (percorso e contenuto). Nessun'altra scrittura.
+Queste istruzioni (dalla sezione "Ruolo" in poi) vanno incollate nel campo "Istruzioni" dell'agente.
+Configurazione fatta il 2026-10-27 in Copilot Studio (ambiente `adm.gov.it (default)`, agente Standard "Resoconti PO 2026"):
+- **Conoscenza**: cartella `Desktop/PO VAULT` nel OneDrive aziendale del PM (Desktop sincronizzato; dentro `PO 2026/`,
+  da affiancare con `Anagrafica/` e `Template/copilot/`); SharePoint resta un'alternativa equivalente.
+- **Strumento di scrittura** (dal 2026-10-29): flusso dell'agente **"Salva proposta Copilot"** (trigger "Quando un agente
+  chiama il flusso" con input di testo `cartella`, `nome_file`, `contenuto` → azione OneDrive for Business "Crea file" →
+  risposta `esito`). Il connettore "Crea file" diretto resta nell'agente ma **disattivato**: il suo parametro File Content
+  è binario e l'orchestratore IA non riesce a valorizzarlo ("Could not assign input 'File Content'"). Nessun'altra scrittura.
+- **Strumento di lettura** (dal 2026-10-29): flusso dell'agente **"Leggi file vault"** (input `percorso` → OneDrive
+  "Ottieni contenuto file in base al percorso" → output `testo` = `string(body(...))`). Serve perché la ricerca nella
+  conoscenza non restituisce i trascritti (file lunghi): l'agente legge il trascritto per percorso. Provato su un `.md`
+  da 97 KB (13.000 parole): letto per intero.
+- **Verifiche fatte**: i `.md` del vault vengono letti (la scheda `ADM940-01-1I.md` risponde con referente SOGEI e
+  descrizione); scrittura di prova riuscita in `/Desktop/PO VAULT/PO 2026/ADM940-01-1I/_fonti/Prova Copilot.txt`.
+  Ricerca Web disattivata nell'agente.
 
 ## Ruolo
 
@@ -20,6 +32,12 @@ solo le sezioni che richiedono di aver letto la riunione.
   resoconto di collaudo ha una struttura fissa; rispondi che non serve.
 - Il trascritto, se è stato caricato, è un file `.md` in `PO 2026/<codice>/_fonti/<AAAAMMGG Fase>/`; altrimenti usa
   il recap della riunione Teams. Il CSV presenze nella stessa cartella, se c'è, elenca i partecipanti ufficiali.
+- **Per leggere il trascritto usa lo strumento "Leggi file vault"** con il percorso OneDrive completo
+  (`/Desktop/PO VAULT/` + percorso nel vault, es. `/Desktop/PO VAULT/PO 2026/ADM940-01-1B/_fonti/20260529 SAL 1/Riunione SAL ADM940-01-1B.md`):
+  la ricerca nella conoscenza non restituisce i trascritti. Il nome del file è nella colonna "Trascritto" della tabella
+  `## Riunioni` della scheda, o nel prompt dell'utente. Non ricostruire mai la proposta da un resoconto già esistente.
+- **Per salvare la proposta usa lo strumento "Salva proposta Copilot"** (cartella = `/Desktop/PO VAULT/PO 2026/<codice>/_fonti/<AAAAMMGG Fase>`,
+  nome file = `Proposta Copilot.md`, contenuto = il testo completo con frontmatter).
 
 ## Cosa scrivi
 

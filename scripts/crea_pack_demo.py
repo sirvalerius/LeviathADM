@@ -1,13 +1,15 @@
 """crea_pack_demo.py — pack distribuibile di LeviathADM (versione Python + LeviathADM Web) con un vault
 "PO 2026" demo interamente inventato, isolato dai dati reali.
 
-  python scripts/crea_pack_demo.py [--dest DIR] [--senza-python]
+  python scripts/crea_pack_demo.py [--dest DIR] [--senza-python] [--solo-web]
 
 - copia solo codice e template (leviathadm/ senza test, scripts/*.py, leviathadm.html, SCHEMA.md,
   requirements.txt senza pytest, Template/ senza video/firma/eml); machines.json senza hostname;
 - genera con i generatori veri del progetto (crea_persona, crea_rilascio, crea_scheletro, archivia_bozza,
   genera_convocazione, build_*) un'Anagrafica fittizia e 10 rilasci immaginari in tutti gli stati;
-- scarica Python 3.12 embedded in python/ con le dipendenze (--senza-python per saltare);
+- scarica Python 3.12 embedded in python/ con le dipendenze (--senza-python per saltare); --solo-web toglie anche
+  il codice Python (leviathadm/, scripts/, leviathadm.cmd, avvia_demo.py, requirements.txt): resta leviathadm.html con
+  template e vault demo, README senza la sezione Python;
 - produce <dest> (ricreata) e <dest>.zip accanto. Default: cartella sorella del vault, LeviathADM-demo.
 Nulla del vault reale viene letto o copiato: nessuna scheda, Anagrafica, _risorse, .obsidian, docs, git.
 """
@@ -187,8 +189,14 @@ Rinominato), con resoconti in bozza e inviati, un Verbale di Collaudo, una convo
 (Scadenze, Bozze da inviare, Da collaudare, Da firmare, Stato invii) è popolato in ogni sezione.
 Le date sono relative al giorno in cui il pack è stato generato. La cartella è anche un vault Obsidian.
 
-Formato dei dati: `SCHEMA.md`. Template Word e markdown in `Template/`. Il **manuale utente** è dentro
-l'applicazione: voce "Manuale" nel menu di entrambe le versioni (nella Web anche dalla schermata iniziale).
+## Documentazione inclusa
+
+- questo file: avvio rapido;
+- `MANUALE.md`: il **manuale utente** completo (lo stesso testo è nell'applicazione, voce "Manuale" del menu di
+  entrambe le versioni, nella Web anche dalla schermata iniziale);
+- `Template/copilot/Guida installazione agente.md`: come creare il proprio **agente Copilot Studio** "Resoconti
+  PO 2026" (istruzioni in `Istruzioni agente Resoconti.md`, prompt in `Prompt resoconto.txt`);
+- `SCHEMA.md`: formato dei dati del vault. Template Word e markdown in `Template/`.
 """
 
 
@@ -601,10 +609,24 @@ def installa_python(dest: Path) -> None:
     run("-c", "import nicegui, docx, openpyxl, win32com; print('Python embedded ok')")
 
 
+def solo_web(dest: Path) -> None:
+    """Toglie dal pack tutto ciò che serve solo alla versione Python; il README perde quella sezione."""
+    for d in ("python", "leviathadm", "scripts"):
+        shutil.rmtree(dest / d, ignore_errors=True)
+    for f in ("leviathadm.cmd", "avvia_demo.py", "requirements.txt"):
+        (dest / f).unlink(missing_ok=True)
+    readme = dest / MARKER
+    t = readme.read_text(encoding="utf-8")
+    a, b = t.index("## Versione Python"), t.index("## Versione Web")
+    t = t[:a] + t[b:].replace("entrambe le versioni (nella Web anche dalla schermata iniziale)", "l'applicazione (anche dalla schermata iniziale)")
+    readme.write_text(t.replace("# LeviathADM — pack demo", "# LeviathADM Web — pack demo (solo versione web)"), encoding="utf-8")
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dest", type=Path, default=REPO.parent / "LeviathADM-demo")
     p.add_argument("--senza-python", action="store_true", help="non scaricare il Python embedded")
+    p.add_argument("--solo-web", action="store_true", help="solo leviathadm.html, template e vault demo (niente codice Python)")
     a = p.parse_args()
     dest = a.dest.resolve()
     if dest.is_relative_to(REPO) or REPO.is_relative_to(dest):
@@ -616,12 +638,15 @@ def main() -> int:
     dest.mkdir(parents=True)
     print(f"Pack in {dest}")
     copia_codice(dest)
+    shutil.copy2(dest / "leviathadm" / "MANUALE.md", dest / "MANUALE.md")   # manuale anche come file, in entrambi i pack
     mappa = mappa_nomi()
     pulisci_testi(dest, mappa)        # prima del vault: i template .txt/.md puliti producono .eml e resoconti puliti
     genera_vault(dest, date.today())
     pulisci_docx(dest, mappa)         # dopo: i .docx generati ereditano i metadati dei template Word
-    if not a.senza_python:
+    if not a.senza_python and not a.solo_web:
         installa_python(dest)
+    if a.solo_web:
+        solo_web(dest)
     shutil.rmtree(dest / "Bozze da inviare", ignore_errors=True)
     for pc in dest.rglob("__pycache__"):
         shutil.rmtree(pc, ignore_errors=True)

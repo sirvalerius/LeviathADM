@@ -27,5 +27,11 @@ Rinominato), con resoconti in bozza e inviati, un Verbale di Collaudo, una convo
 (Scadenze, Bozze da inviare, Da collaudare, Da firmare, Stato invii) è popolato in ogni sezione.
 Le date sono relative al giorno in cui il pack è stato generato. La cartella è anche un vault Obsidian.
 
-Formato dei dati: `SCHEMA.md`. Template Word e markdown in `Template/`. Il **manuale utente** è dentro
-l'applicazione: voce "Manuale" nel menu di entrambe le versioni (nella Web anche dalla schermata iniziale).
+## Documentazione inclusa
+
+- questo file: avvio rapido;
+- `MANUALE.md`: il **manuale utente** completo (lo stesso testo è nell'applicazione, voce "Manuale" del menu di
+  entrambe le versioni, nella Web anche dalla schermata iniziale);
+- `Template/copilot/Guida installazione agente.md`: come creare il proprio **agente Copilot Studio** "Resoconti
+  PO 2026" (istruzioni in `Istruzioni agente Resoconti.md`, prompt in `Prompt resoconto.txt`);
+- `SCHEMA.md`: formato dei dati del vault. Template Word e markdown in `Template/`.

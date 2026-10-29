@@ -26,7 +26,8 @@ Il vault markdown **è** il database. Due consumatori: **LeviathADM** (lato uman
 | `protocollo_analisi`, `protocollo_approvazione_analisi`, `protocollo_collaudo`, `protocollo_estensione_esercizio`, `protocollo_disponibilita_collaudo` | `N del GG/MM/AAAA (Registro …)` — opz. `; rif. SOGEI NNNNN/RU del GG/MM/AAAA` | stringa unica; registri: Contratto/ingresso (analisi, disponibilità), Ufficiale/uscita (approvazione). `DA COMPLETARE` marca i dati mancanti |
 | `codice_rilascio_precedente` | `ADMxxx-xx-xX` | sulla scheda **nuova**: punta al codice storico da cui si è rinominata (v. procedura sotto) |
 | `codice_rilascio_successivo` | `ADMxxx-xx-xX` | sulla scheda **vecchia** (stato `Rinominato`, anche nel senso di "confluenza"): punta al nuovo codice |
-| `nota_variazione_date` | testo libero, es. `30/11 → 31/08 (collaudo)` | opzionale: quando le date correnti (`data_collaudo_prevista`/`data_rilascio_prevista`) divergono dal PO originario, annotarlo qui — `build_rilasci.py` lo riporta verbatim in colonna "Var. date"; se vuoto la colonna resta vuota, nessun calcolo automatico (il dato originario non è altrimenti tracciato) |
+| `nota_variazione_date` | testo libero, es. `30/11 → 31/08 (collaudo)` | opzionale: nota manuale sulle date; `build_rilasci.py` la riporta verbatim in colonna "Var. date"; se vuota, dal 2026-10-29 la colonna mostra l'ultima riga `Date` di `## Variazioni` come `GG/MM → GG/MM (fase)` |
+| `variazione_date`, `variazione_effort` | `Sì`/assente | riepilogo: almeno una variazione di quel tipo registrata in `## Variazioni` (scritti da `registra_variazione`, dal 2026-10-29; prima a mano in alcune schede) |
 | `trasmissione_verbale_in_firma`, `trasmissione_verbale_protocollata`, `estensione_esercizio_in_firma`, `estensione_esercizio_protocollata` | `true`/assente | `build_da_firmare` (checkbox in `Da firmare.md`) — **mai a mano**. Tracciano il workflow Arcipelago a due step (vedi `Manuale protocollo/`) per le lettere di fine collaudo; indipendenti da `protocollo_collaudo`/`protocollo_estensione_esercizio`, che restano il numero di protocollo reale da popolare a parte quando arriva |
 
 ### Avanzamento automatico dello stato (dal 2026-10-27)
@@ -72,6 +73,7 @@ Capita che SOGEI o ADM rinumerino un punto di piano già avviato (es. `ADM953-01
 | `## Decisioni chiave` | bullet `- AAAA-MM-GG — testo` | `markdown_db._parse_decisioni` |
 | `## Prossima riunione` | testo libero (una riga) | `markdown_db` |
 | `## Allegati protocolli` | tabella `Tipo | Documento | Prot. ADM n. | Data prot. ADM | Rif. SOGEI | Registro`, una riga per tipo | `markdown_db._parse_table`; generata da `build_project_pages.py` |
+| `## Variazioni` | tabella `Data | Fase | Tipo | Da | A | Motivo | Fonte` — Data ISO (giorno della registrazione); Fase `Analisi`/`Collaudo`/`Rilascio` (= `data_fine_analisi`/`data_collaudo_prevista`/`data_rilascio_prevista`); Tipo `Date` (Da/A ISO) o `Effort` (Da/A gg/uomo); Motivo e Fonte testo libero (di norma il `[[wikilink]]` del resoconto). Registro: righe in coda, mai riscritte. `registra_variazione` (writers / `LV.sk.registraVariazione`) aggiunge la riga e, per `Date`, porta il campo frontmatter della fase al valore `A` (`Da` vuoto = valore corrente); imposta `variazione_date`/`variazione_effort: Sì` | `loader._variazioni` / `LV.modelli` (righe con 7 celle, Data non vuota né `—`); `build_rilasci.var_date_da_variazioni` |
 
 Convenzione tabelle: riga heading + riga separatore `---` + righe dati; i parser saltano le prime due.
 

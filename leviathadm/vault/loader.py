@@ -8,7 +8,7 @@ from . import paths as _paths  # noqa: F401  (inserisce scripts/ in sys.path pri
 from mail_utils import parse_frontmatter  # noqa: E402
 
 from . import parsers as P
-from .models import Azione, Decisione, Nota, Protocollo, Resoconto, Riunione, Rilascio
+from .models import Azione, Decisione, Nota, Protocollo, Resoconto, Riunione, Rilascio, Variazione
 from .paths import is_scheda_rilascio, nota_id
 
 _SCADENZA_RE = re.compile(r"scadenza:\s*(\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})", re.IGNORECASE)
@@ -61,6 +61,11 @@ def _decisioni(sezione: str) -> list[Decisione]:
 def _protocolli(sezione: str) -> list[Protocollo]:
     return [Protocollo(tipo=r[0], documento=r[1], numero_adm=r[2], data_adm=r[3], rif_sogei=r[4], registro=r[5])
             for r in P.parse_table(sezione) if len(r) >= 6]
+
+
+def _variazioni(sezione: str) -> list[Variazione]:
+    return [Variazione(data=r[0], fase=r[1], tipo=r[2], da=r[3], a=r[4], motivo=r[5], fonte=r[6])
+            for r in P.parse_table(sezione) if len(r) >= 7 and r[0] not in ("", "—", "-")]
 
 
 def parse_resoconto(path: Path, text: str) -> Resoconto:
@@ -138,7 +143,7 @@ def parse_rilascio(path: Path, text: str, root: Path, mtime_ns: int) -> Rilascio
         frontmatter=fm, stato=fm.get("stato", ""), descrizione_rilascio=fm.get("descrizione_rilascio", ""),
         riunioni=_riunioni(sez.get("Riunioni", "")), azioni=_azioni(sez.get("Azioni aperte", "")),
         decisioni=_decisioni(sez.get("Decisioni chiave", "")),
-        protocolli=_protocolli(sez.get("Allegati protocolli", "")),
+        protocolli=_protocolli(sez.get("Allegati protocolli", "")), variazioni=_variazioni(sez.get("Variazioni", "")),
         prossima_riunione=P.strip_markdown_inline(_pulisci_sezione(sez.get("Prossima riunione", ""))),
         team_raw=sez.get("Team", "").strip(), resoconti=trova_resoconti(path.parent),
         verbali=trova_verbali(path.parent), sezioni=dict(sez), problemi=problemi)

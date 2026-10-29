@@ -8,14 +8,14 @@ aggiornato: 2026-10-29
 
 ## Panoramica
 
-Ordinati per data collaudo prevista. "Var. date" mostra `nota_variazione_date` se compilata nella scheda (nessun calcolo automatico: il dato PO originario non è altrimenti tracciato). Collaudo eff. / Rilascio eff. valorizzati solo a evento avvenuto.
+Ordinati per data collaudo prevista. "Var. date" mostra `nota_variazione_date` se compilata nella scheda, altrimenti l'ultima variazione di date registrata in `## Variazioni` (vuota se nessuna). Collaudo eff. / Rilascio eff. valorizzati solo a evento avvenuto.
 
 | Codice | Descrizione rilascio | Stato | Struttura | Collaudo prev. | Rilascio prev. | Fine analisi | Var. date | Collaudo eff. | Rilascio eff. |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [[ADM905-01-0A]] | Archivio digitale delle concessioni marittime e aerostatiche | Concluso | DDOC | 2026-08-31 | 2026-09-14 | 2026-07-01 |  | 2026-08-31 | 2026-09-14 |
 | [[ADM902-03-0C]] | Verifica automatica dell'integrità dei sigilli doganali sui dirigibili | Collaudo | DDOC | 2026-10-22 | 2026-11-18 | 2026-08-30 |  | 2026-10-22 |  |
 | [[ADM902-02-0B]] | Sportello telematico per le dichiarazioni doganali degli zeppelin | In Verifica | DDOC | 2026-11-09 | 2026-12-08 | 2026-09-19 |  |  |  |
-| [[ADM904-01-0A]] | Cruscotto di monitoraggio delle accise sulle caldaie a vapore | In corso | DACV | 2026-12-28 | 2027-01-27 | 2026-09-19 |  |  |  |
+| [[ADM904-01-0A]] | Cruscotto di monitoraggio delle accise sulle caldaie a vapore | In corso | DACV | 2027-01-18 | 2027-01-27 | 2026-09-19 | 28/12 → 18/01 (collaudo) |  |  |
 | [[ADM904-02-0B]] | Monitoraggio delle scommesse sulle regate di dirigibili | In corso | DGLL | 2027-01-18 | 2027-02-16 |  |  |  |  |
 | [[ADM903-02-0B]] | Tracciabilità delle partite di tabacco provenienti da Atlantide | Analisi | DACV | 2027-01-27 | 2027-02-26 | 2026-11-28 |  |  |  |
 | [[ADM902-01-0A]] | Registro telematico dei dazi sui dirigibili in transito | Bozza | DDOC | 2027-02-08 | 2027-03-08 |  |  |  |  |

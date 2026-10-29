@@ -40,10 +40,34 @@ def _sort_key(fm: dict) -> tuple:
     return (d, fm.get("codice_rilascio", ""))
 
 
+def var_date_da_variazioni(text: str) -> str:
+    """Ultima riga `Date` di `## Variazioni` come `GG/MM → GG/MM (fase)`; vuoto se non c'è (SCHEMA.md)."""
+    sez = text.split("\n## Variazioni", 1)
+    if len(sez) < 2:
+        return ""
+    corpo = sez[1].split("\n## ", 1)[0]
+    ultima = ""
+    for r in corpo.split("\n"):
+        c = [x.strip() for x in r.strip().strip("|").split("|")] if r.strip().startswith("|") else []
+        if len(c) >= 5 and c[2] == "Date" and c[0] not in ("Data", "—", "-", ""):
+            ultima = f"{_ddmm(c[3])} → {_ddmm(c[4])} ({c[1].lower()})"
+    return ultima
+
+
+def _ddmm(iso: str) -> str:
+    try:
+        return datetime.strptime(iso, "%Y-%m-%d").strftime("%d/%m")
+    except ValueError:
+        return iso
+
+
 def build() -> None:
     attivi, storici = [], []
     for release_dir in _releases_in_scope():
-        fm = parse_frontmatter(release_dir / f"{release_dir.name}.md")
+        scheda = release_dir / f"{release_dir.name}.md"
+        fm = parse_frontmatter(scheda)
+        if not fm.get("nota_variazione_date", "").strip():
+            fm["nota_variazione_date"] = var_date_da_variazioni(scheda.read_text(encoding="utf-8"))
         if fm.get("stato", "").strip().lower() == "rinominato":
             storici.append(fm)
         else:
@@ -64,8 +88,8 @@ def build() -> None:
         "## Panoramica",
         "",
         "Ordinati per data collaudo prevista. \"Var. date\" mostra `nota_variazione_date` se"
-        " compilata nella scheda (nessun calcolo automatico: il dato PO originario non è"
-        " altrimenti tracciato). Collaudo eff. / Rilascio eff. valorizzati solo a evento avvenuto.",
+        " compilata nella scheda, altrimenti l'ultima variazione di date registrata in `## Variazioni`"
+        " (vuota se nessuna). Collaudo eff. / Rilascio eff. valorizzati solo a evento avvenuto.",
         "",
         "| Codice | Descrizione rilascio | Stato | Struttura | Collaudo prev. | Rilascio prev. "
         "| Fine analisi | Var. date | Collaudo eff. | Rilascio eff. |",

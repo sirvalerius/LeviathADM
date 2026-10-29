@@ -345,6 +345,10 @@ def genera_vault(root: Path, oggi: date) -> None:
                                  f"- [ ] [[Pulsar Tancredi]] — confermare il perimetro dei dati storici — scadenza: {it(oggi)}",
                                  "- [x] [[Dirigibile Anselmo]] — fornire i profili utente"])
     sezione(s, "Prossima riunione", [f"SAL #3 — {it(lavorativo(g(20)))} ore 15:00"])
+    # 2.1: variazione di date registrata al SAL 2 (slittamento del collaudo di tre settimane)
+    writers.registra_variazione(s, lavorativo(g(-2)).isoformat(), "Collaudo", "Date", "", lavorativo(g(81)).isoformat(),
+                                "Rilascio in validazione posticipato per le anagrafiche delle caldaie",
+                                f"[[ADM904-01-0A - {lavorativo(g(-2)):%Y%m%d} Resoconto SAL 2]]", mt(s))
     # 2.0: proposta dell'agente Copilot per il prossimo SAL (Nuova riunione con quella data → "Importa da Copilot")
     import proposta_copilot
     d3 = lavorativo(g(20))

@@ -35,7 +35,7 @@
 | [[ADM902-02-0B]] | Azione | 13 nov 2026 | tra 15gg | convocare il collaudo |
 | [[ADM902-03-0C]] | Rilascio | 18 nov 2026 | tra 20gg |  |
 | [[ADM902-02-0B]] | Rilascio | 8 dic 2026 | tra 40gg |  |
-| [[ADM904-01-0A]] | Collaudo | 28 dic 2026 | tra 60gg |  |
+| [[ADM904-01-0A]] | Collaudo | 18 gen 2027 | tra 81gg |  |
 | [[ADM904-02-0B]] | Collaudo | 18 gen 2027 | tra 81gg |  |
 | [[ADM903-02-0B]] | Collaudo | 27 gen 2027 | tra 90gg |  |
 | [[ADM904-01-0A]] | Rilascio | 27 gen 2027 | tra 90gg |  |

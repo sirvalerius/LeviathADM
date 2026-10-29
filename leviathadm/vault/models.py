@@ -34,6 +34,17 @@ class Decisione(_Base):
     testo: str
 
 
+class Variazione(_Base):
+    """Riga di `## Variazioni`: variazione di date (Da/A ISO) o di effort (Da/A gg/uomo) su una fase."""
+    data: str
+    fase: str
+    tipo: str
+    da: str = ""
+    a: str = ""
+    motivo: str = ""
+    fonte: str = ""
+
+
 class Protocollo(_Base):
     tipo: str
     documento: str
@@ -80,6 +91,7 @@ class Rilascio(_Base):
     azioni: list[Azione]
     decisioni: list[Decisione]
     protocolli: list[Protocollo]
+    variazioni: list[Variazione] = Field(default_factory=list)
     prossima_riunione: str
     team_raw: str
     resoconti: list[Resoconto]

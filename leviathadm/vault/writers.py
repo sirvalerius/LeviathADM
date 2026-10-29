@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import paths as _paths  # noqa: F401  (inserisce scripts/ in sys.path prima degli import sotto)
 from . import cruscotto as _cruscotto  # noqa: F401  (allinea la radice dei moduli script a VAULT_ROOT)
-from mail_utils import update_frontmatter_keys  # noqa: E402
+from mail_utils import parse_frontmatter, update_frontmatter_keys  # noqa: E402
 from build_project_pages import write_release_page  # noqa: E402
 
 from .parsers import Blocco, ricomponi, spezza_sezioni, split_body
@@ -305,6 +305,52 @@ def registra_collaudo(scheda: Path, data_iso: str, expected_mtime_ns: int, *, og
     update_frontmatter(scheda, {"data_collaudo_effettiva": d.isoformat()}, expected_mtime_ns)
     avanza_stato_dopo(scheda)
     return scheda.stat().st_mtime_ns
+
+
+FASI_VARIAZIONE = {"Analisi": "data_fine_analisi", "Collaudo": "data_collaudo_prevista", "Rilascio": "data_rilascio_prevista"}
+TIPI_VARIAZIONE = ("Date", "Effort")
+_INT_VARIAZIONI = "| Data | Fase | Tipo | Da | A | Motivo | Fonte |\n|------|------|------|----|---|--------|-------|\n"
+
+
+def _iso(s: str) -> str:
+    return date.fromisoformat(s).isoformat()       # ValueError se non ISO
+
+
+def registra_variazione(scheda: Path, data_iso: str, fase: str, tipo: str, da: str, a: str, motivo: str, fonte: str,
+                        expected_mtime_ns: int) -> int:
+    """Riga in coda a `## Variazioni` (SCHEMA.md). Tipo Date: `Da` vuoto = valore corrente della fase; il campo
+    frontmatter della fase prende `A` e `variazione_date: Sì`. Tipo Effort: solo la riga e `variazione_effort: Sì`."""
+    fase, tipo, da, a, motivo, fonte = (x.strip() for x in (fase, tipo, da, a, motivo, fonte))
+    if fase not in FASI_VARIAZIONE:
+        raise ValueError(f"fase non ammessa: {fase} (una di {', '.join(FASI_VARIAZIONE)})")
+    if tipo not in TIPI_VARIAZIONE:
+        raise ValueError(f"tipo non ammesso: {tipo} (Date o Effort)")
+    if not a:
+        raise ValueError("valore 'A' obbligatorio")
+    if any("|" in x or "\n" in x for x in (da, a, motivo, fonte)):
+        raise ValueError("i campi della tabella non possono contenere '|' né a capo")
+    data_iso = _iso(data_iso)
+    fm = parse_frontmatter(scheda.read_text(encoding="utf-8"))
+    updates: dict[str, str] = {}
+    if tipo == "Date":
+        a = _iso(a)
+        da = _iso(da) if da else fm.get(FASI_VARIAZIONE[fase], "").strip()
+        updates[FASI_VARIAZIONE[fase]] = a
+        updates["variazione_date"] = "Sì"
+    else:
+        updates["variazione_effort"] = "Sì"
+    riga = f"| {data_iso} | {fase} | {tipo} | {da} | {a} | {motivo} | {fonte} |"
+    _, _, blocchi = _spezza_file(scheda.read_text(encoding="utf-8"))
+    b = next((x for x in blocchi if x.heading == "Variazioni"), None)
+    if b is None or not [r for r in b.body.split("\n") if r.strip().startswith("|")]:
+        body = "\n" + (b.body.strip() + "\n\n" if b and b.body.strip() else "") + _INT_VARIAZIONI + riga + "\n\n"
+        mt = replace_section(scheda, "Variazioni", body, expected_mtime_ns)
+    else:
+        righe = b.body.split("\n")
+        ultima = max(i for i, r in enumerate(righe) if r.strip().startswith("|"))
+        righe.insert(ultima + 1, riga)
+        mt = salva_sezioni(scheda, {"Variazioni": "\n".join(righe)}, expected_mtime_ns)
+    return update_frontmatter(scheda, updates, mt)
 
 
 def segna_lettera(scheda: Path, field_base: str, stato: str, expected_mtime_ns: int) -> int:

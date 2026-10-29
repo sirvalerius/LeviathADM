@@ -13,6 +13,7 @@ from leviathadm.ui.pages.convocazione import dialogo_convocazione, giorni_lavora
 from leviathadm.ui.pages.lettere import dialogo_lettere
 from leviathadm.ui.pages.resoconto import carica_doc, sezioni_lettura
 from leviathadm.ui.pages.resoconto_modifica import editor_resoconto
+from leviathadm.ui.pages.variazioni import dialogo_variazione
 from leviathadm.ui.shell import shell, vai
 from leviathadm.ui.theme import STATO_COLORS
 from leviathadm.vault import azioni as A
@@ -255,6 +256,18 @@ def render_rilascio(codice: str) -> None:
         with ui.expansion(f'Decisioni chiave · {len(r.decisioni)}', icon='history_edu').classes('w-full lv-card'):
             for d in r.decisioni:
                 ui.label((f'{d.data:%d/%m/%Y} — ' if d.data else '') + d.testo).classes('text-sm text-slate-800')
+
+        with ui.expansion(f'Variazioni di date ed effort · {len(r.variazioni)}', icon='edit_calendar',
+                          value=bool(r.variazioni)).classes('w-full lv-card'):
+            ui.button('Registra variazione', icon='add', on_click=lambda: dialogo_variazione(r).open()) \
+                .props('dense outline').classes('mb-2')
+            if r.variazioni:
+                ui.table(columns=[{'name': k, 'label': lbl, 'field': k, 'align': 'left'} for k, lbl in
+                                  (('data', 'Data'), ('fase', 'Fase'), ('tipo', 'Tipo'), ('da', 'Da'), ('a', 'A'),
+                                   ('motivo', 'Motivo'), ('fonte', 'Fonte'))],
+                         rows=[v.model_dump() for v in r.variazioni]).classes('w-full').props('dense flat')
+            else:
+                ui.label('Nessuna variazione registrata.').classes('text-sm text-slate-500 italic')
 
         backlink = idx.backlink_di(r.id)
         with ui.expansion(f'Citato da · {len(backlink)}', icon='link').classes('w-full lv-card'):
